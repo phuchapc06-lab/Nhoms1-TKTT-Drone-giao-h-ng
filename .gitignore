@@ -1,0 +1,42 @@
+# ==========================================
+# File .gitignore cơ bản cho dự án Python
+# Loại bỏ các file không cần thiết khỏi Git
+# ==========================================
+
+# 1. Các file được sinh ra trong quá trình biên dịch của Python (Byte-compiled / optimized / DLL files)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 2. Thư mục môi trường ảo (Virtual environments)
+# Không commit các thư viện đã cài đặt, người dùng sẽ tự cài qua requirements.txt
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.env
+
+# 3. Các file cấu hình của IDE/Editor
+# Tránh commit cấu hình cá nhân của VSCode, PyCharm, v.v.
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 4. Thư mục chứa dữ liệu và Logs
+# Bỏ qua các file dữ liệu lớn sinh ra trong quá trình chạy, nhưng vẫn giữ lại cấu trúc thư mục thông qua file .gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+logs/
+*.log
+
+# 5. Các file tạm của hệ điều hành
+# File sinh ra bởi Windows hoặc macOS
+.DS_Store
+Thumbs.db
+ehthumbs.db
