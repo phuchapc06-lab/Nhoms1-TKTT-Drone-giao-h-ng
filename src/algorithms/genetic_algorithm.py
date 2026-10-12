@@ -123,3 +123,46 @@ class GeneticAlgorithm:
 
     def _fitness(self, chromosome: Chromosome) -> float:
         return self._evaluate(chromosome)[0]
+
+    # ------------------------------------------------------------------
+    # 3. Toán tử di truyền
+    # ------------------------------------------------------------------
+    def _tournament_select(self, population: List[Chromosome], fitnesses: List[float]) -> Chromosome:
+        """Chọn lọc Tournament: lấy ngẫu nhiên tournament_size cá thể, giữ cá thể có fitness cao nhất."""
+        k = min(self.tournament_size, len(population))
+        contenders = self.rng.sample(range(len(population)), k)
+        winner = max(contenders, key=lambda idx: fitnesses[idx])
+        return population[winner]
+
+    def _order_crossover(
+        self, parent1: Chromosome, parent2: Chromosome, cut: Optional[Tuple[int, int]] = None
+    ) -> Chromosome:
+        """
+        Lai ghép thứ tự (Order Crossover - OX):
+        1. Chép nguyên đoạn [a, b] của parent1 sang con.
+        2. Các vị trí còn lại điền gen của parent2 theo thứ tự xuất hiện, bắt đầu từ b+1 và vòng về đầu,
+           bỏ qua gen đã có -> con luôn là hoán vị hợp lệ (không trùng / thiếu đơn hàng hay vách ngăn).
+        Tham số cut=(a, b) chỉ dùng để kiểm thử.
+        """
+        n = len(parent1)
+        if n < 2:
+            return parent1[:]
+        a, b = cut if cut is not None else sorted(self.rng.sample(range(n), 2))
+
+        child: List[Optional[int]] = [None] * n
+        child[a:b + 1] = parent1[a:b + 1]
+        used = set(parent1[a:b + 1])
+
+        fill_genes = [g for g in parent2[b + 1:] + parent2[:b + 1] if g not in used]
+        fill_positions = list(range(b + 1, n)) + list(range(0, a))
+        for pos, gene in zip(fill_positions, fill_genes):
+            child[pos] = gene
+        return child  # type: ignore[return-value]
+
+    def _swap_mutation(self, chromosome: Chromosome) -> Chromosome:
+        """Đột biến hoán đổi (Swap): với xác suất mutation_rate, đổi chỗ 2 gen ngẫu nhiên. Trả về bản sao mới."""
+        mutant = chromosome[:]
+        if len(mutant) >= 2 and self.rng.random() < self.mutation_rate:
+            i, j = self.rng.sample(range(len(mutant)), 2)
+            mutant[i], mutant[j] = mutant[j], mutant[i]
+        return mutant

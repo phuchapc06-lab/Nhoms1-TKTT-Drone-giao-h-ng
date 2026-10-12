@@ -128,10 +128,74 @@ def test_evaluate():
     print("-> Danh gia fitness hoat dong chinh xac!")
 
 
+def test_tournament_select():
+    print("\n5. Kiem tra chon loc Tournament:")
+    nodes, dist = make_mock_data()
+    ga = GeneticAlgorithm(nodes, dist, num_drones=3, pop_size=40, seed=11)
+    population = ga._init_population()
+    fitnesses = [ga._fitness(c) for c in population]
+    best_idx = max(range(len(population)), key=lambda i: fitnesses[i])
+
+    # Tournament bang ca quan the -> luon chon ca the tot nhat
+    ga.tournament_size = len(population)
+    assert ga._tournament_select(population, fitnesses) == population[best_idx]
+
+    # Tournament 3 -> trung binh fitness duoc chon phai cao hon trung binh quan the
+    ga.tournament_size = 3
+    picked = [ga._fitness(ga._tournament_select(population, fitnesses)) for _ in range(500)]
+    avg_picked = sum(picked) / len(picked)
+    avg_pop = sum(fitnesses) / len(fitnesses)
+    assert avg_picked > avg_pop, "Tournament phai uu tien ca the tot"
+    print(f"-> Fitness TB duoc chon={avg_picked:.4f} > TB quan the={avg_pop:.4f}")
+    print("-> Tournament selection hoat dong chinh xac!")
+
+
+def test_order_crossover():
+    print("\n6. Kiem tra lai ghep OX:")
+    nodes, dist = make_mock_data()
+    ga = GeneticAlgorithm(nodes, dist, num_drones=3, seed=5)
+
+    # Vi du kinh dien: giu doan [3..6] cua p1, dien phan con lai theo thu tu p2 tu vi tri 7
+    p1 = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    p2 = [9, 3, 7, 8, 2, 6, 5, 1, 4]
+    assert ga._order_crossover(p1, p2, cut=(3, 6)) == [3, 8, 2, 4, 5, 6, 7, 1, 9]
+
+    # Doan cat phu ca chuoi -> con = p1
+    assert ga._order_crossover(p1, p2, cut=(0, 8)) == p1
+
+    # 200 lan ngau nhien tren chromosome that (co vach ngan) -> con luon hop le
+    for _ in range(200):
+        c1, c2 = ga._random_chromosome(), ga._random_chromosome()
+        child = ga._order_crossover(c1, c2)
+        assert is_valid_chromosome(child, ga), f"Con OX khong hop le: {child}"
+    print("-> OX luon sinh hoan vi hop le (khong trung / thieu don hang)!")
+
+
+def test_swap_mutation():
+    print("\n7. Kiem tra dot bien Swap:")
+    nodes, dist = make_mock_data()
+    ga = GeneticAlgorithm(nodes, dist, num_drones=3, seed=9)
+    original = ga._random_chromosome()
+
+    ga.mutation_rate = 1.0
+    mutant = ga._swap_mutation(original)
+    assert is_valid_chromosome(mutant, ga)
+    diff = [i for i in range(len(original)) if original[i] != mutant[i]]
+    assert len(diff) == 2, "Swap phai doi cho dung 2 vi tri"
+    assert mutant is not original, "Phai tra ve ban sao, khong sua cha"
+
+    ga.mutation_rate = 0.0
+    assert ga._swap_mutation(original) == original, "mutation_rate=0 -> khong doi"
+    print("-> Swap mutation hoat dong chinh xac!")
+
+
 if __name__ == "__main__":
     print("=== KIEM THU DOC LAP MODULE THANH VIEN 1 (GA) ===")
     test_init_and_validation()
     test_decode()
     test_random_population()
     test_evaluate()
+    test_tournament_select()
+    test_order_crossover()
+    test_swap_mutation()
     print("\n=== TAT CA UNIT TEST CHO THANH VIEN 1 DA VUOT QUA! ===")
