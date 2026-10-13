@@ -1,0 +1,219 @@
+================================================================================
+KẾ HOẠCH SPRINT 1 TUẦN: BÀI TOÁN ĐỊNH TUYẾN ĐA UAV (UAV DELIVERY ROUTING)
+Chủ đề: Tối ưu hóa định tuyến cho mạng giao vận Drone trong đô thị thông minh
+Quy mô nhóm: 6 Thành viên
+Thời gian thực hiện: Sprint 7 ngày (Thứ Hai - Chủ Nhật)
+================================================================================
+
+I. GIAO KÈO DỮ LIỆU CHUNG GIỮA CÁC THÀNH VIÊN (DATA CONTRACT)
+(Tất cả 6 thành viên bắt buộc tuân theo để đảm bảo ghép nối code không bị xung đột)
+
+1. Cấu trúc một Điểm (Node):
+   node = {
+       "id": 0,                # 0: Trạm gốc (Depot), 1..N: Khách hàng, N+1..: Trạm sạc
+       "type": "depot",        # "depot" | "delivery" | "charging"
+       "pos": (x, y),          # Tọa độ trên lưới không gian 2D/3D (VD: (20, 35))
+       "demand": 2.0,          # Khối lượng gói hàng cần giao (kg) - Depot/Trạm sạc = 0
+       "tw": (t_min, t_max),   # Khung giờ giao hàng (Time Window) tính theo phút
+       "service_time": 5       # Thời gian hạ cánh giao hàng hoặc sạc (phút)
+   }
+
+2. Ma trận khoảng cách né vật cản (dist_matrix):
+   Mảng 2 chiều NumPy: dist_matrix[i][j] là khoảng cách thực tế (float) từ điểm i đến j
+   đã né toàn bộ các vùng cấm bay (No-fly zones) do Thành viên 2 tính toán trước.
+
+3. Lời giải lộ trình toàn cục của đội bay (solution):
+   solution = [
+       [0, 1, 4, 0],      # Tuyến của Drone 1 (Bắt đầu tại Depot 0 -> giao 1, 4 -> về 0)
+       [0, 2, 5, 3, 0],   # Tuyến của Drone 2
+       [0, 6, 7, 0]       # Tuyến của Drone 3
+   ]
+
+--------------------------------------------------------------------------------
+II. QUY TRÌNH PHỐI HỢP TRÊN GITHUB (GIT FLOW)
+--------------------------------------------------------------------------------
+- Nhánh chung của cả nhóm: develop (tất cả các bạn tạo nhánh con từ nhánh này)
+- Nhánh sản phẩm chính thức: main (chỉ merge vào ngày nghiệm thu cuối tuần)
+- Quy tắc làm việc:
+  1. Lấy code mới nhất: git checkout develop && git pull origin develop
+  2. Tạo nhánh riêng: git checkout -b feature/tvX-<ten-nhiem-vu>
+  3. Commit code: git add . && git commit -m "feat(module): mô tả nội dung"
+  4. Đẩy lên GitHub: git push -u origin feature/tvX-<ten-nhiem-vu>
+  5. Mở Pull Request (PR) vào nhánh develop để Nhóm trưởng (TV5) duyệt merge.
+
+--------------------------------------------------------------------------------
+III. PHÂN CÔNG NHIỆM VỤ CHI TIẾT 6 THÀNH VIÊN
+--------------------------------------------------------------------------------
+
+👤 THÀNH VIÊN 1: LẬP TRÌNH GIẢI THUẬT DI TRUYỀN (GA CORE ENGINE)
+- Tên nhánh Git: feature/tv1-ga-core
+- Vai trò: Chuyên gia Thuật toán Meta-heuristic.
+- Nhiệm vụ: Xây dựng bộ khung Genetic Algorithm (GA) để tìm kiếm thứ tự phân phối đơn hàng tối ưu cho nhiều UAV.
+- Đầu vào (Input):
+  + Danh sách ID khách hàng kèm nhu cầu tải trọng hàng hóa.
+  + Số lượng Drone K khả dụng và tải trọng tối đa mỗi Drone.
+  + Ma trận khoảng cách dist_matrix (lấy từ Thành viên 2).
+  + Hàm đánh giá độ thích nghi fitness_func (lấy từ Thành viên 5).
+- Công việc cụ thể:
+  1. Thiết kế biểu diễn Nhiễm sắc thể (Chromosome): Hoán vị các điểm giao hàng kết hợp ký tự phân tách chia tuyến cho K Drone.
+  2. Khởi tạo quần thể ban đầu: Sinh 50 - 100 cá thể ngẫu nhiên.
+  3. Cài đặt các toán tử di truyền:
+     * Selection: Chọn lọc Tournament (chọn ngẫu nhiên 3 cá thể, giữ cá thể tốt nhất).
+     * Crossover: Order Crossover (OX) để đảm bảo không bị trùng lặp đơn hàng.
+     * Mutation: Swap Mutation (hoán đổi ngẫu nhiên vị trí 2 điểm giao).
+  4. Vòng lặp tiến hóa (evolve): Lặp qua các thế hệ, trả về lời giải tốt nhất và lịch sử hội tụ.
+- Đầu ra (Output):
+  + File: src/algorithms/genetic_algorithm.py (Class GeneticAlgorithm).
+  + File test: tests/test_ga.py.
+
+--------------------------------------------------------------------------------
+
+👤 THÀNH VIÊN 2: TỐI ƯU A* & TÍNH TRƯỚC MA TRẬN KHOẢNG CÁCH (A* PRECOMPUTE)
+- Tên nhánh Git: feature/tv2-astar-matrix
+- Vai trò: Chuyên gia Tối ưu hóa Thuật toán Đồ thị.
+- Nhiệm vụ: Nâng cấp thuật toán A* với cấu trúc Min-Heap tối ưu và tính trước (Precompute) ma trận khoảng cách giữa tất cả các cặp điểm để GA và Greedy tra cứu O(1).
+- Đầu vào (Input):
+  + Bản đồ Grid, danh sách No-fly zones (vùng cấm bay).
+  + Tọa độ tất cả các điểm: Depot, Khách hàng, Trạm sạc.
+- Công việc cụ thể:
+  1. Cải tiến thuật toán A*: Sử dụng heapq tối ưu tốc độ, bổ sung làm mịn đường đi (Path Smoothing) để đường bay thẳng và tự nhiên.
+  2. Xây dựng module tính Ma trận khoảng cách & đường đi:
+     * Chạy A* tính khoảng cách thực tế và lưu đường bay chi tiết cho từng cặp điểm (i, j) né vật cản.
+     * Lưu kết quả ra file Cache: data/processed/distance_matrix.pkl (chỉ tính 1 lần, các lần sau load trong 0.1 giây).
+- Đầu ra (Output):
+  + File: src/models/optimized_astar.py và src/utils/distance_matrix.py.
+  + File test: tests/test_distance_matrix.py.
+
+--------------------------------------------------------------------------------
+
+👤 THÀNH VIÊN 3: RÀNG BUỘC NĂNG LƯỢNG PIN & TỰ ĐỘNG CHÈN TRẠM SẠC
+- Tên nhánh Git: feature/tv3-energy-charging
+- Vai trò: Chuyên gia Quản lý Năng lượng & Ràng buộc Kỹ thuật.
+- Nhiệm vụ: Kiểm soát mức tiêu thụ pin của từng Drone theo tải trọng và khoảng cách; tự động chèn trạm sạc vào lộ trình khi pin sắp cạn (E < E_min).
+- Đầu vào (Input):
+  + Tuyến bay của 1 Drone: route = [0, c1, c2, ..., 0].
+  + Danh sách các trạm sạc pin khả dụng.
+  + Ma trận khoảng cách dist_matrix (từ Thành viên 2).
+- Công việc cụ thể:
+  1. Viết công thức tiêu thụ năng lượng theo tải trọng hàng: E = d * (1.0 + 0.1 * w).
+  2. Duyệt từng chặng bay của Drone: Nếu chặng tiếp theo làm pin rơi xuống dưới ngưỡng an toàn (E < 15%):
+     * Tìm trạm sạc gần nhất khả thi.
+     * Chèn trạm sạc vào giữa: [... -> điểm hiện tại -> TRẠM SẠC -> điểm tiếp theo -> ...].
+     * Phục hồi lại 100% pin và cộng thêm thời gian sạc.
+  3. Nếu không thể đến được bất kỳ trạm sạc nào: Đánh dấu tuyến đường lỗi (is_valid = False) để phạt nặng.
+- Đầu ra (Output):
+  + File: src/algorithms/energy_manager.py (Class EnergyManager).
+  + File test: tests/test_energy_manager.py.
+
+--------------------------------------------------------------------------------
+
+👤 THÀNH VIÊN 4: BỘ SINH DỮ LIỆU THỬ NGHIỆM ĐA QUY MÔ (BENCHMARK DATA)
+- Tên nhánh Git: feature/tv4-benchmark-data
+- Vai trò: Chuyên gia Dữ liệu & Kịch bản Thực nghiệm.
+- Nhiệm vụ: Tạo ra các bộ dữ liệu thử nghiệm chuẩn theo quy mô 10, 50, 100, 500 điểm giao có đầy đủ tọa độ, khối lượng hàng và khung giờ giao.
+- Đầu vào (Input):
+  + Kích thước bản đồ không gian, số lượng khách hàng, số trạm sạc, số vùng cấm bay.
+- Công việc cụ thể:
+  1. Nâng cấp bộ sinh dữ liệu mô phỏng đô thị thực tế:
+     * Tọa độ khách hàng phân bố theo cụm (Clustered) mô phỏng các khu dân cư.
+     * Khối lượng hàng: w_i trong khoảng [1.0, 5.0] kg.
+     * Khung thời gian giao hàng (Time Window): [E_i, L_i].
+     * Các khối chữ nhật vùng cấm bay (No-fly zones).
+  2. Xuất và lưu sẵn 4 file dữ liệu vào thư mục data/raw/:
+     * benchmark_10.json (dùng để test nhanh & demo trực quan).
+     * benchmark_50.json (quy mô trung bình).
+     * benchmark_100.json (quy mô lớn).
+     * benchmark_500.json (quy mô kiểm tra độ chịu tải).
+  3. Viết hàm nạp dữ liệu: load_benchmark(file_path).
+- Đầu ra (Output):
+  + File: src/utils/benchmark_generator.py.
+  + Bộ 4 file dữ liệu: data/raw/benchmark_*.json.
+  + File test: tests/test_benchmark_generator.py.
+
+--------------------------------------------------------------------------------
+
+👤 THÀNH VIÊN 5 (NGUYỄN PHÚC HÀ): NHÓM TRƯỞNG / HÀM THÍCH NGHI, TÍCH HỢP & TRỰC QUAN HÓA
+(PHẦN VIỆC NÀY ĐÃ ĐƯỢC THỰC HIỆN VÀ ĐẨY LÊN GITHUB HOÀN TẤT)
+- Tên nhánh Git: feature/tv5-fitness-and-visualizer (và nhánh cá nhân nguyen-phuc-ha)
+- Vai trò: Nhóm trưởng / Kỹ sư Tích hợp Hệ thống (Tech Lead & System Integrator).
+- Nhiệm vụ: Viết hàm mục tiêu đa tiêu chí (Fitness Function), ráp nối toàn bộ module của các thành viên thành luồng chạy hoàn chỉnh trong main.py, trực quan hóa đồ thị và quản lý Git.
+- Đầu vào (Input): Mã nguồn hoàn thiện từ các thành viên trong nhóm.
+- Công việc cụ thể:
+  1. Cài đặt Hàm mục tiêu & Thích nghi (FitnessCalculator):
+     Cost = alpha * (Tổng quãng đường) + beta * (Tổng năng lượng) + gamma * (Phạt trễ Time Window) + delta * (Phạt quá tải / cạn pin)
+     Fitness = 1000 / (Cost + 1)
+  2. Xây dựng Module trực quan hóa đồ họa (UAVVisualizer):
+     * Vẽ bản đồ 2D hiển thị vùng cấm bay (đỏ mờ gạch chéo), Depot (ngôi sao vàng), trạm sạc (tam giác xanh), điểm giao hàng.
+     * Vẽ từng tuyến đường của từng UAV bằng dải màu riêng biệt (UAV 1 xanh, UAV 2 cam, UAV 3 xanh lá...), kèm theo mũi tên định hướng.
+     * Vẽ biểu đồ đường cong hội tụ qua các thế hệ của GA (Convergence Curve).
+  3. Tích hợp Pipeline chính trong src/main.py: Thực thi toàn bộ luồng từ nạp dữ liệu đến xuất đồ thị.
+  4. Quản trị GitHub: Quản lý nhánh main, develop, review code và duyệt Pull Request của cả nhóm.
+- Đầu ra (Output - Đã hoàn thành):
+  + File: src/algorithms/fitness.py.
+  + File: src/utils/visualizer.py.
+  + File test: tests/test_member5.py (Passed 100%).
+  + Báo cáo đóng góp: docs/NGUYEN_PHUC_HA_CONTRIBUTION.md.
+
+--------------------------------------------------------------------------------
+
+👤 THÀNH VIÊN 6: THUẬT TOÁN ĐỐI SÁNH BASELINE (A* + GREEDY) & TỐI ƯU CỤC BỘ 2-OPT
+- Tên nhánh Git: feature/tv6-baseline-greedy
+- Vai trò: Lập trình viên Thuật toán Đối sánh Baseline.
+- Nhiệm vụ: Xây dựng thuật toán đối sánh Baseline (A* + Greedy) và thuật toán Tối ưu cục bộ 2-Opt (Local Search) để làm thước đo khoa học so sánh với giải thuật GA của TV1.
+- Đầu vào (Input):
+  + Danh sách khách hàng và tọa độ (từ Thành viên 4).
+  + Ma trận khoảng cách dist_matrix (từ Thành viên 2).
+  + Hàm sửa pin / chèn trạm sạc (từ Thành viên 3).
+  + Hàm tính chi phí FitnessCalculator (từ Thành viên 5).
+- Công việc cụ thể:
+  1. Cài đặt thuật toán Tham lam láng giềng gần nhất (Greedy / Nearest Neighbor Heuristic):
+     * Drone xuất phát từ Depot, liên tục chọn khách hàng gần nhất chưa giao mà vẫn thỏa mãn tải trọng.
+     * Khi hết tải hoặc hết khách phù hợp, Drone quay về Depot và Drone tiếp theo xuất phát.
+  2. Tích hợp sửa pin cho Baseline: Sử dụng hàm của TV3 để chèn trạm sạc khi đường bay của Greedy bị yếu pin.
+  3. Cài đặt thuật toán Tối ưu cục bộ 2-Opt (Local Search):
+     * Thử đảo đoạn đường bay [i, j] để gỡ các đoạn chéo nhau giúp rút ngắn thêm quãng đường.
+  4. Đánh giá đối sánh: Xuất bảng so sánh sơ bộ giữa nghiệm của Greedy vs nghiệm của GA (quãng đường, năng lượng tiêu thụ, thời gian tính toán).
+- Đầu ra (Output):
+  + File: src/algorithms/baseline_greedy.py (Class GreedyRouter).
+  + File: src/algorithms/local_search.py (Hàm two_opt_route(route, dist_matrix)).
+  + File test: tests/test_greedy_baseline.py.
+
+--------------------------------------------------------------------------------
+IV. LỊCH TRÌNH 7 NGÀY (SPRINT ROADMAP CHO 6 NGƯỜI)
+--------------------------------------------------------------------------------
+
+- Thứ Hai (Ngày 1):
+  * Họp nhóm 15 phút thống nhất Data Contract và phân công nhiệm vụ.
+  * TV5 (Nhóm trưởng) đã dựng xong nền tảng code Fitness, Visualizer và nhánh develop.
+  * 5 bạn còn lại kéo code từ nhánh develop về máy và tạo branch cá nhân feature/tvX-...
+
+- Thứ Ba (Ngày 2):
+  * TV4 xuất file dữ liệu mẫu benchmark_10.json.
+  * TV2 hoàn thành tính ma trận khoảng cách A* né vật cản.
+  * TV1 bắt đầu dựng cấu trúc Chromosome cho GA.
+  * TV6 dựng khung giải thuật Greedy ban đầu.
+
+- Thứ Tư (Ngày 3):
+  * TV1 hoàn thiện toán tử Lai ghép (OX) & Đột biến (Swap) của GA.
+  * TV3 hoàn thành logic trừ pin và chèn trạm sạc tự động.
+  * TV6 hoàn thiện thuật toán A* + Greedy chạy được trên tập 10 điểm.
+
+- Thứ Năm (Ngày 4) - MỐC TÍCH HỢP HỆ THỐNG GIAI ĐOẠN 1:
+  * TV5 chủ trì ghép code: Kết nối TV1 (GA) + TV2 (A*) + TV3 (Pin) + TV4 (Data) + TV6 (Greedy) + TV5 (Fitness & Visualizer).
+  * Mục tiêu bắt buộc: Chạy thành công cả 2 thuật toán (GA và Greedy) trên tập benchmark_10.json.
+
+- Thứ Sáu (Ngày 5):
+  * TV6 áp dụng 2-Opt để tối ưu thêm đường bay.
+  * TV4 xuất đầy đủ các bộ dữ liệu: 50, 100, 500 điểm.
+  * TV5 hoàn thiện biểu đồ vẽ so sánh trực quan giữa 2 thuật toán.
+
+- Thứ Bảy (Ngày 6):
+  * Cả nhóm chạy thực nghiệm so sánh A* + GA vs A* + Greedy trên các quy mô 10, 50, 100 điểm.
+  * Thu thập số liệu: Thời gian chạy (giây), Quãng đường (km), Pin tiêu thụ (Wh).
+  * Chụp lại các biểu đồ kết quả để phục vụ làm báo cáo khoa học.
+
+- Chủ Nhật (Ngày 7):
+  * TV5 review code, duyệt toàn bộ Pull Request merge vào develop và merge vào main.
+  * Cập nhật file README.md với hướng dẫn chạy hoàn chỉnh.
+  * Nghiệm thu toàn bộ sản phẩm sprint 1 tuần, sẵn sàng chuyển sang làm Báo cáo & Slide thuyết trình!
+================================================================================
