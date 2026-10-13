@@ -8,6 +8,7 @@ Biểu diễn nhiễm sắc thể (Chromosome):
     Ví dụ (K = 3): [3, 1, -1, 5, 2, -2, 4]  ->  [[0, 3, 1, 0], [0, 5, 2, 0], [0, 4, 0]]
 """
 import random
+import time
 from typing import List, Dict, Tuple, Any, Optional
 
 from algorithms.fitness import FitnessCalculator
@@ -74,6 +75,15 @@ class GeneticAlgorithm:
 
         # Cache: tuple(chromosome) -> (fitness, cost, breakdown)
         self._cache: Dict[Tuple[int, ...], Tuple[float, float, Dict[str, float]]] = {}
+
+        # Kết quả, được gán sau khi gọi evolve()
+        self.best_chromosome: Optional[Chromosome] = None
+        self.best_solution: Optional[List[List[int]]] = None
+        self.best_fitness: float = 0.0
+        self.best_cost: float = float("inf")
+        self.best_breakdown: Dict[str, float] = {}
+        self.history: List[float] = []
+        self.runtime: float = 0.0
 
     # ------------------------------------------------------------------
     # 1. Mã hóa / Giải mã
@@ -166,3 +176,64 @@ class GeneticAlgorithm:
             i, j = self.rng.sample(range(len(mutant)), 2)
             mutant[i], mutant[j] = mutant[j], mutant[i]
         return mutant
+
+    # ------------------------------------------------------------------
+    # 4. Vòng lặp tiến hóa
+    # ------------------------------------------------------------------
+    def _next_generation(self, population: List[Chromosome], fitnesses: List[float]) -> List[Chromosome]:
+        """
+        Sinh thế hệ kế tiếp:
+        - Elitism: giữ nguyên `elitism` cá thể tốt nhất.
+        - Phần còn lại: Tournament chọn 2 cha -> OX (theo crossover_rate, không lai thì sao chép cha 1) -> Swap.
+        """
+        ranked = sorted(range(len(population)), key=lambda idx: fitnesses[idx], reverse=True)
+        next_population = [population[idx][:] for idx in ranked[:self.elitism]]
+
+        while len(next_population) < self.pop_size:
+            parent1 = self._tournament_select(population, fitnesses)
+            parent2 = self._tournament_select(population, fitnesses)
+            if self.rng.random() < self.crossover_rate:
+                child = self._order_crossover(parent1, parent2)
+            else:
+                child = parent1[:]
+            next_population.append(self._swap_mutation(child))
+        return next_population
+
+    def evolve(self) -> Tuple[List[List[int]], float, List[float]]:
+        """
+        Chạy GA qua `generations` thế hệ (thế hệ đầu tiên là quần thể khởi tạo ngẫu nhiên).
+        Trả về:
+            - best_solution: lời giải tốt nhất theo Data Contract
+            - best_fitness: độ thích nghi của lời giải đó
+            - history: best fitness tốt nhất tính đến mỗi thế hệ (dùng cho UAVVisualizer.plot_convergence_curve)
+        Sau khi chạy có thêm các thuộc tính: best_chromosome, best_cost, best_breakdown, runtime (giây).
+        """
+        start = time.perf_counter()
+        best_chromosome: Optional[Chromosome] = None
+        best_eval: Optional[Tuple[float, float, Dict[str, float]]] = None
+        history: List[float] = []
+
+        population = self._init_population()
+        fitnesses: List[float] = []
+        for gen in range(self.generations):
+            if gen > 0:
+                population = self._next_generation(population, fitnesses)
+
+            evaluations = [self._evaluate(c) for c in population]
+            fitnesses = [ev[0] for ev in evaluations]
+            # Chỉ giữ cache của quần thể hiện tại: đủ để thế hệ sau dùng lại cho elite / bản sao,
+            # và bộ nhớ không phình theo số thế hệ (quan trọng với benchmark 500 điểm)
+            self._cache = {tuple(c): ev for c, ev in zip(population, evaluations)}
+
+            gen_best = max(range(len(population)), key=fitnesses.__getitem__)
+            if best_eval is None or fitnesses[gen_best] > best_eval[0]:
+                best_chromosome = population[gen_best][:]
+                best_eval = evaluations[gen_best]
+            history.append(best_eval[0])
+
+        self.best_chromosome = best_chromosome
+        self.best_solution = self.decode(best_chromosome)
+        self.best_fitness, self.best_cost, self.best_breakdown = best_eval
+        self.history = history
+        self.runtime = time.perf_counter() - start
+        return self.best_solution, self.best_fitness, history

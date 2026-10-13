@@ -13,8 +13,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 # Them duong dan src vao he thong
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
+import matplotlib.pyplot as plt
+
 from algorithms.genetic_algorithm import GeneticAlgorithm
 from algorithms.fitness import FitnessCalculator
+from utils.visualizer import UAVVisualizer
 
 
 def make_mock_data():
@@ -189,6 +192,86 @@ def test_swap_mutation():
     print("-> Swap mutation hoat dong chinh xac!")
 
 
+def check_solution(solution, ga):
+    delivered = sorted(c for route in solution for c in route[1:-1])
+    assert delivered == ga.customers, "Moi khach phai duoc giao dung 1 lan"
+    assert len(solution) <= ga.num_drones, "So tuyen khong duoc vuot qua K"
+    assert all(route[0] == 0 and route[-1] == 0 for route in solution), "Tuyen phai bat dau & ket thuc o Depot"
+
+
+def test_evolve():
+    print("\n8. Kiem tra vong lap tien hoa (evolve):")
+    nodes, dist = make_mock_data()
+
+    # Quan the ban dau (cung seed -> trung voi quan the dau tien ma evolve() se tao)
+    ref = GeneticAlgorithm(nodes, dist, num_drones=3, pop_size=80, seed=42)
+    initial_costs = [ref._evaluate(c)[1] for c in ref._init_population()]
+
+    ga = GeneticAlgorithm(nodes, dist, num_drones=3, pop_size=80, generations=300, seed=42)
+    solution, best_fitness, history = ga.evolve()
+
+    check_solution(solution, ga)
+    assert len(history) == ga.generations, "Moi the he ghi 1 diem vao history"
+    assert all(history[i] <= history[i + 1] for i in range(len(history) - 1)), "History khong duoc giam"
+    assert best_fitness == history[-1] == ga.best_fitness
+    assert ga.best_cost <= min(initial_costs), "GA phai tot hon ca the tot nhat ban dau"
+    assert ga.best_breakdown["cap_penalty"] == 0, "Tong demand 13.5kg <= 3 x 5kg -> GA phai het qua tai"
+    assert ga.runtime > 0
+
+    recomputed = FitnessCalculator().evaluate_solution(solution, dist, nodes)
+    assert math.isclose(recomputed[1], ga.best_cost), "best_cost phai khop voi FitnessCalculator"
+
+    avg0 = sum(initial_costs) / len(initial_costs)
+    print(f"-> Cost quan the ban dau: TB={avg0:.2f}, tot nhat={min(initial_costs):.2f}")
+    print(f"-> Cost GA sau {ga.generations} the he: {ga.best_cost:.2f} (giam {100 * (1 - ga.best_cost / avg0):.1f}% so voi TB)")
+    print(f"-> Chi tiet: {', '.join(f'{k}={v:.2f}' for k, v in ga.best_breakdown.items())}")
+    print(f"-> Loi giai: {solution}")
+    print(f"-> Thoi gian chay: {ga.runtime:.2f}s")
+
+    # Truong hop bien K = 1 (khong co vach ngan) van chay duoc
+    ga1 = GeneticAlgorithm(nodes, dist, num_drones=1, pop_size=20, generations=30, seed=1)
+    solution1, _, _ = ga1.evolve()
+    assert len(solution1) == 1
+    check_solution(solution1, ga1)
+
+    # Ket noi voi Visualizer cua TV5 (khong bat cua so)
+    visualizer = UAVVisualizer(grid_size=(60, 60))
+    fig, _ = visualizer.plot_multi_uav_routes(nodes, [], solution, show=False)
+    fig2, _ = visualizer.plot_convergence_curve(history, show=False)
+    assert fig is not None and fig2 is not None
+    plt.close("all")
+    print("-> evolve() hoat dong chinh xac & ket noi duoc voi Visualizer!")
+
+
+def test_seed_reproducible():
+    print("\n9. Kiem tra tai lap ket qua theo seed:")
+    nodes, dist = make_mock_data()
+    run1 = GeneticAlgorithm(nodes, dist, num_drones=3, generations=50, seed=123).evolve()
+    run2 = GeneticAlgorithm(nodes, dist, num_drones=3, generations=50, seed=123).evolve()
+    assert run1 == run2, "Cung seed phai cho cung loi giai & history"
+    print("-> Cung seed -> cung ket qua!")
+
+
+def save_demo_plots(out_dir):
+    """Chay GA tren du lieu gia lap va luu hinh tuyen bay + duong hoi tu (de xem bang mat)."""
+    nodes, dist = make_mock_data()
+    ga = GeneticAlgorithm(nodes, dist, num_drones=3, pop_size=80, generations=300, seed=42)
+    solution, _, history = ga.evolve()
+
+    os.makedirs(out_dir, exist_ok=True)
+    visualizer = UAVVisualizer(grid_size=(60, 60))
+    visualizer.plot_multi_uav_routes(
+        nodes, [], solution,
+        title=f"GA demo - du lieu gia lap 8 khach, 3 UAV (cost={ga.best_cost:.1f})",
+        save_path=os.path.join(out_dir, "ga_demo_routes.png"), show=False
+    )
+    visualizer.plot_convergence_curve(
+        history, title="GA demo - duong cong hoi tu",
+        save_path=os.path.join(out_dir, "ga_demo_convergence.png"), show=False
+    )
+    plt.close("all")
+
+
 if __name__ == "__main__":
     print("=== KIEM THU DOC LAP MODULE THANH VIEN 1 (GA) ===")
     test_init_and_validation()
@@ -198,4 +281,9 @@ if __name__ == "__main__":
     test_tournament_select()
     test_order_crossover()
     test_swap_mutation()
+    test_evolve()
+    test_seed_reproducible()
+
+    # Hinh demo luu vao data/processed/ (thu muc nay da bi .gitignore)
+    save_demo_plots(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "processed")))
     print("\n=== TAT CA UNIT TEST CHO THANH VIEN 1 DA VUOT QUA! ===")
