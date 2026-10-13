@@ -10,6 +10,7 @@ Chạy từ thư mục gốc repo. Môi trường ảo nằm ở `../venv` (Pyth
 ../venv/Scripts/python.exe -m pip install -r requirements.txt   # cài lần đầu
 ../venv/Scripts/python.exe src/main.py                          # demo A* (mở cửa sổ matplotlib)
 MPLBACKEND=Agg ../venv/Scripts/python.exe tests/test_member5.py # test không bật cửa sổ
+MPLBACKEND=Agg ../venv/Scripts/python.exe tests/test_ga.py      # test GA (~2s), lưu hình demo vào data/processed/
 ```
 
 - Test là script thường (có hàm `test_*` nên cũng chạy được bằng pytest, nhưng pytest không có trong `requirements.txt`). Mỗi file test tự thêm `src/` vào `sys.path`.
@@ -24,14 +25,14 @@ MPLBACKEND=Agg ../venv/Scripts/python.exe tests/test_member5.py # test không b�
 | A* baseline | `src/models/baseline_astar.py` (`astar`) | — | Có (heapq, 8 hướng, Euclid) |
 | Fitness | `src/algorithms/fitness.py` (`FitnessCalculator`) | TV5 | Xong |
 | Visualizer | `src/utils/visualizer.py` (`UAVVisualizer`) | TV5 | Xong |
-| GA | `src/algorithms/genetic_algorithm.py` (`GeneticAlgorithm`) | TV1 | Chưa có |
+| GA | `src/algorithms/genetic_algorithm.py` (`GeneticAlgorithm`) | TV1 | Chạy được trên dữ liệu giả (nhánh `feature/tv1-ga-core`); chờ tích hợp dữ liệu thật |
 | A* tối ưu + ma trận | `src/models/optimized_astar.py`, `src/utils/distance_matrix.py` | TV2 | Chưa có |
 | Pin / trạm sạc | `src/algorithms/energy_manager.py` (`EnergyManager`) | TV3 | Chưa có |
 | Benchmark | `src/utils/benchmark_generator.py`, `data/raw/benchmark_*.json` | TV4 | Chưa có |
 | Greedy + 2-Opt | `src/algorithms/baseline_greedy.py` (`GreedyRouter`), `src/algorithms/local_search.py` (`two_opt_route`) | TV6 | Chưa có |
 | Pipeline | `src/main.py` | TV5 | Mới chỉ demo 1 đường A*, chưa ghép GA/fitness/visualizer |
 
-Kế hoạch chi tiết: `../KE_HOACH_PHAN_CONG_NHOM_6_NGUOI.txt` (nằm ngoài repo).
+Kế hoạch phân công của nhóm nằm trong file `KE_HOACH_PHAN_CONG_NHOM_6_NGUOI.txt` (không có trong repo).
 
 ## Data Contract (bắt buộc giữ nguyên để ghép code)
 
@@ -49,7 +50,9 @@ detailed_paths = {(i, j): [(x, y), ...]}    # tùy chọn, cho Visualizer vẽ �
 
 Đơn vị thời gian: phút. `FitnessCalculator.drone_speed` = đơn vị lưới / phút (mặc định 10).
 
-## Giao diện giữa các module (đã cố định trong code TV5)
+## Giao diện giữa các module
+
+- `GeneticAlgorithm(nodes, dist_matrix, num_drones, energy_manager=None, pop_size=80, generations=300, mutation_rate=0.2, seed=None, ...).evolve() -> (best_solution, best_fitness, history)`; sau khi chạy có thêm `best_cost`, `best_breakdown`, `runtime`. Chromosome = hoán vị khách hàng + K-1 vách ngăn số âm; chỉ node `type == "delivery"` được đưa vào chromosome.
 
 - `FitnessCalculator.evaluate_solution(solution, dist_matrix, nodes, energy_manager=None) -> (fitness, total_cost, breakdown)`; `fitness = 1000 / (cost + 1)`, càng cao càng tốt.
 - Nếu truyền `energy_manager`, fitness gọi **`energy_manager.calculate_route_energy(route, dist_matrix, nodes) -> (total_energy, is_feasible)`**. TV3 phải cài đúng chữ ký này; `is_feasible=False` bị phạt `delta`.
@@ -68,4 +71,4 @@ detailed_paths = {(i, j): [(x, y), ...]}    # tùy chọn, cho Visualizer vẽ �
 
 - `main`: bản chính thức; `develop`: nhánh tích hợp. Nhánh cá nhân tạo từ `develop`: `feature/tvX-<ten-nhiem-vu>`, PR vào `develop`, TV5 duyệt.
 - Commit message dạng `feat(module): mô tả`.
-- Hiện `main` đi trước `origin/develop` 1 commit (file `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md`); local chưa có nhánh `develop`.
+- Hiện `main` đi trước `origin/develop` 1 commit (file `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md`).
