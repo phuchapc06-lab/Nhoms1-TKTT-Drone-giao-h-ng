@@ -229,11 +229,30 @@ class UAVRoutingPipeline:
 
         return solution
 
-    def solve_ga(self, generations: int = 60, pop_size: int = 40) -> Tuple[List[List[int]], List[float]]:
+    def solve_ga(self, generations: int = 80, pop_size: int = 60) -> Tuple[List[List[int]], List[float]]:
         """
-        Thuat toan Di truyen GA tien tien (Core Meta-heuristic cho TV1).
-        Su dung Order Crossover (OX) va Swap Mutation, giu lai ca the tot nhat.
+        Tích hợp giải thuật Di truyền GA chính thức của Thành viên 1 (GA Core Engine).
+        Có cơ chế dự phòng (fallback) tự động.
         """
+        try:
+            from algorithms.genetic_algorithm import GeneticAlgorithm
+            ga = GeneticAlgorithm(
+                nodes=self.nodes,
+                dist_matrix=self.dist_matrix,
+                num_drones=self.num_drones,
+                fitness_calc=self.fitness_calc,
+                pop_size=pop_size,
+                generations=generations,
+                seed=self.seed
+            )
+            solution, best_fitness, history_fitness = ga.evolve()
+            # Bổ sung tuyến trống nếu số lượng UAV sử dụng ít hơn num_drones
+            while len(solution) < self.num_drones:
+                solution.append([0, 0])
+            return solution, history_fitness
+        except Exception as e:
+            print(f"[Pipeline] Chạy fallback GA do: {e}")
+
         deliveries = [k for k, v in self.nodes.items() if v["type"] == "delivery"]
         num_deliveries = len(deliveries)
 
@@ -243,23 +262,17 @@ class UAVRoutingPipeline:
         np.random.seed(self.seed)
 
         def split_chromosome(chrom: List[int]) -> List[List[int]]:
-            """Chia danh sach khach hang cho K drone tuan thu gioi han tai trong."""
             sol = [[] for _ in range(self.num_drones)]
             drone_loads = [0.0] * self.num_drones
             d_idx = 0
-
             for cust in chrom:
                 demand = self.nodes[cust]["demand"]
-                # Neu drone hien tai qua tai thi chuyen sang drone tiep theo
                 if drone_loads[d_idx] + demand > self.drone_capacity and d_idx < self.num_drones - 1:
                     d_idx += 1
                 sol[d_idx].append(cust)
                 drone_loads[d_idx] += demand
-
-            # Them Depot 0 vao dau va cuoi moi route
             return [[0] + r + [0] for r in sol]
 
-        # 1. Khoi tao quan the
         population = []
         for _ in range(pop_size):
             chrom = list(np.random.permutation(deliveries))
