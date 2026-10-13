@@ -155,7 +155,9 @@ class DataContractValidator:
                     visited_deliveries.append(node_id)
                     route_demand += node_data.get("demand", 0.0)
 
-            if route_demand > drone_capacity:
+            # Kiem tra tai trong (cho phep sai so lam tron 0.01kg)
+            tolerance = 0.01
+            if route_demand > drone_capacity + tolerance:
                 errors.append(
                     f"Tuyen Drone #{drone_idx + 1} vi pham tai trong toi da: {route_demand:.2f}kg > {drone_capacity:.2f}kg."
                 )
