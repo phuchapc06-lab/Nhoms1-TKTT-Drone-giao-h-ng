@@ -106,5 +106,3 @@ if __name__ == "__main__":
         num_nofly=2,
         output_path="data/raw/benchmark_10.json"
     )
-    du_lieu = load_benchmark("data/raw/benchmark_10.json")
-    print("Đọc thử điểm đầu tiên (Depot):", du_lieu["nodes"][0])
