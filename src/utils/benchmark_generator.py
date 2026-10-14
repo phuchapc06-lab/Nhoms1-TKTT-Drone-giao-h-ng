@@ -4,7 +4,7 @@ import os
 
 
 def generate_benchmark(num_customers, num_charging, num_nofly, output_path, map_size=100, seed=42):
-    """Sinh dữ liệu mô phỏng đô thị thực tế theo chuẩn Data Contract của nhóm."""
+    """Sinh dữ liệu mô phỏng đô thị thực tế theo Data Contract của ."""
     random.seed(seed + num_customers)
     nodes = []
 
@@ -83,7 +83,7 @@ def generate_benchmark(num_customers, num_charging, num_nofly, output_path, map_
 
 
 def load_benchmark(file_path):
-    """Hàm nạp dữ liệu từ file JSON theo chuẩn Data Contract."""
+    """Hàm nạp dữ liệu từ file JSON theo Data Contract."""
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
@@ -99,10 +99,12 @@ def load_benchmark(file_path):
 
 
 if __name__ == "__main__":
-    # Công việc Ngày 2: Chỉ xuất file dữ liệu mẫu benchmark_10.json
+    # Công việc Ngày 2: xuất file dữ liệu mẫu benchmark_10.json
     generate_benchmark(
         num_customers=10,
         num_charging=2,
         num_nofly=2,
         output_path="data/raw/benchmark_10.json"
     )
+    du_lieu = load_benchmark("data/raw/benchmark_10.json")
+    print("Đọc thử điểm đầu tiên (Depot):", du_lieu["nodes"][0])
