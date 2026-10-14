@@ -38,6 +38,11 @@ def parse_args():
         help="Chạy so sánh đối sánh giữa A* + GA và A* + Greedy Baseline"
     )
     parser.add_argument(
+        "--evaluate-all",
+        action="store_true",
+        help="Chạy kiểm thử đối sánh đa quy mô, xuất báo cáo EXPERIMENT_RESULTS.md và biểu đồ cột/scalability"
+    )
+    parser.add_argument(
         "--no-plot",
         action="store_true",
         help="Không hiển thị popup cửa sổ đồ thị (chế độ chạy tự động / batch test)"
@@ -68,6 +73,22 @@ def main():
     print("   HỆ THỐNG TỐI ƯU HÓA ĐỊNH TUYẾN ĐỘI BAY UAV GIAO HÀNG ĐÔ THỊ (UDRP)  ")
     print("   Phụ trách Kiến trúc & Tích hợp: Nguyễn Phúc Hà (Thành viên 5)       ")
     print("======================================================================")
+
+    # Nếu người dùng chọn chạy bộ đánh giá thực nghiệm đa quy mô
+    if args.evaluate_all:
+        from utils.benchmark_evaluator import BenchmarkEvaluator
+        print("[*] Đang khởi chạy bộ đánh giá thực nghiệm đa quy mô (Multi-Scale Evaluator)...")
+        evaluator = BenchmarkEvaluator(
+            save_figures_dir=args.save_dir,
+            results_dir="docs",
+            csv_dir="data/processed",
+            seed=args.seed
+        )
+        evaluator.run_multi_scale_benchmark(scales=[10, 20, 30])
+        print(f"\n[✓] Đã hoàn tất thực nghiệm đa quy mô!")
+        print(f"[✓] Xem báo cáo chi tiết tại: docs/EXPERIMENT_RESULTS.md")
+        print(f"[✓] Xem biểu đồ cột và Scalability tại: {args.save_dir}/")
+        return
 
     # 1. Khởi tạo Pipeline tích hợp
     pipeline = UAVRoutingPipeline(
