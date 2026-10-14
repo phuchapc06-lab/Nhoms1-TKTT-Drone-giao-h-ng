@@ -1,0 +1,209 @@
+{
+    "map_size": 100,
+    "num_customers": 10,
+    "num_charging": 2,
+    "nodes": [
+        {
+            "id": 0,
+            "type": "depot",
+            "pos": [
+                50,
+                50
+            ],
+            "demand": 0.0,
+            "tw": [
+                0,
+                1000
+            ],
+            "service_time": 0
+        },
+        {
+            "id": 1,
+            "type": "delivery",
+            "pos": [
+                61,
+                88
+            ],
+            "demand": 2.7,
+            "tw": [
+                81,
+                243
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 2,
+            "type": "delivery",
+            "pos": [
+                59,
+                18
+            ],
+            "demand": 3.2,
+            "tw": [
+                0,
+                64
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 3,
+            "type": "delivery",
+            "pos": [
+                83,
+                76
+            ],
+            "demand": 1.9,
+            "tw": [
+                87,
+                208
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 4,
+            "type": "delivery",
+            "pos": [
+                68,
+                76
+            ],
+            "demand": 1.1,
+            "tw": [
+                62,
+                231
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 5,
+            "type": "delivery",
+            "pos": [
+                92,
+                71
+            ],
+            "demand": 4.5,
+            "tw": [
+                343,
+                517
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 6,
+            "type": "delivery",
+            "pos": [
+                56,
+                30
+            ],
+            "demand": 1.7,
+            "tw": [
+                271,
+                421
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 7,
+            "type": "delivery",
+            "pos": [
+                41,
+                36
+            ],
+            "demand": 3.3,
+            "tw": [
+                216,
+                379
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 8,
+            "type": "delivery",
+            "pos": [
+                74,
+                72
+            ],
+            "demand": 3.9,
+            "tw": [
+                104,
+                247
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 9,
+            "type": "delivery",
+            "pos": [
+                74,
+                77
+            ],
+            "demand": 1.7,
+            "tw": [
+                63,
+                220
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 10,
+            "type": "delivery",
+            "pos": [
+                44,
+                15
+            ],
+            "demand": 3.3,
+            "tw": [
+                102,
+                233
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 11,
+            "type": "charging",
+            "pos": [
+                19,
+                80
+            ],
+            "demand": 0.0,
+            "tw": [
+                0,
+                1000
+            ],
+            "service_time": 5
+        },
+        {
+            "id": 12,
+            "type": "charging",
+            "pos": [
+                31,
+                37
+            ],
+            "demand": 0.0,
+            "tw": [
+                0,
+                1000
+            ],
+            "service_time": 5
+        }
+    ],
+    "no_fly_zones": [
+        {
+            "id": 1,
+            "bounds": [
+                77,
+                62,
+                87,
+                73
+            ]
+        },
+        {
+            "id": 2,
+            "bounds": [
+                72,
+                54,
+                82,
+                65
+            ]
+        }
+    ]
+}
