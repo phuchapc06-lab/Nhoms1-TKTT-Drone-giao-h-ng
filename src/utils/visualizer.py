@@ -151,8 +151,117 @@ class UAVVisualizer:
 
         if save_path:
             plt.savefig(save_path, dpi=300)
-            print(f"[Visualizer] Đã lưu đồ thị hội tụ vào: {save_path}")
+            try:
+                print(f"[Visualizer] Đã lưu đồ thị hội tụ vào: {save_path}")
+            except UnicodeEncodeError:
+                print(f"[Visualizer] Da luu do thi hoi tu vao: {save_path}")
 
         if show:
             plt.show()
         return fig, ax
+
+    def plot_comparison_bar_charts(
+        self,
+        comparison_dict: Dict[str, Dict[str, float]],
+        title: str = "So sánh Hiệu năng: A* + Greedy (Baseline) vs A* + GA (Đề xuất)",
+        save_path: Optional[str] = None,
+        show: bool = True
+    ):
+        """
+        Vẽ biểu đồ cột nhóm (Grouped Bar Chart) so sánh 3 chỉ số chính:
+        1. Tổng quãng đường (km)
+        2. Tổng năng lượng tiêu thụ (Wh)
+        3. Thời gian tính toán (giây)
+        """
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        fig.suptitle(title, fontsize=14, fontweight="bold", y=1.03)
+
+        algos = list(comparison_dict.keys())
+        colors = ["#7f7f7f", "#2ca02c"] if len(algos) == 2 else self.drone_colors[:len(algos)]
+
+        # 1. Quãng đường
+        distances = [comparison_dict[a].get("distance", 0.0) for a in algos]
+        bars1 = axes[0].bar(algos, distances, color=colors, width=0.45, edgecolor="black")
+        axes[0].set_title("Tổng quãng đường (km)", fontsize=11, fontweight="bold")
+        axes[0].set_ylabel("Kilomet (km)")
+        axes[0].grid(axis="y", linestyle="--", alpha=0.6)
+        for bar in bars1:
+            yval = bar.get_height()
+            axes[0].text(bar.get_x() + bar.get_width()/2.0, yval + (max(distances)*0.01), f"{yval:.1f}", ha="center", va="bottom", fontweight="bold", fontsize=9)
+
+        # 2. Năng lượng
+        energies = [comparison_dict[a].get("energy", 0.0) for a in algos]
+        bars2 = axes[1].bar(algos, energies, color=colors, width=0.45, edgecolor="black")
+        axes[1].set_title("Năng lượng tiêu hao (Wh)", fontsize=11, fontweight="bold")
+        axes[1].set_ylabel("Watt-giờ (Wh)")
+        axes[1].grid(axis="y", linestyle="--", alpha=0.6)
+        for bar in bars2:
+            yval = bar.get_height()
+            axes[1].text(bar.get_x() + bar.get_width()/2.0, yval + (max(energies)*0.01), f"{yval:.1f}", ha="center", va="bottom", fontweight="bold", fontsize=9)
+
+        # 3. Thời gian tính toán
+        times = [comparison_dict[a].get("exec_time_sec", 0.0) for a in algos]
+        bars3 = axes[2].bar(algos, times, color=colors, width=0.45, edgecolor="black")
+        axes[2].set_title("Thời gian tính toán (giây)", fontsize=11, fontweight="bold")
+        axes[2].set_ylabel("Giây (s)")
+        axes[2].grid(axis="y", linestyle="--", alpha=0.6)
+        for bar in bars3:
+            yval = bar.get_height()
+            axes[2].text(bar.get_x() + bar.get_width()/2.0, yval + (max(times)*0.01), f"{yval:.3f}s", ha="center", va="bottom", fontweight="bold", fontsize=9)
+
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            try:
+                print(f"[Visualizer] Đã lưu biểu đồ so sánh cột vào: {save_path}")
+            except UnicodeEncodeError:
+                print(f"[Visualizer] Da luu bieu do so sanh cot vao: {save_path}")
+
+        if show:
+            plt.show()
+        return fig, axes
+
+    def plot_scalability_curve(
+        self,
+        scales: List[int],
+        ga_metrics: Dict[str, List[float]],
+        greedy_metrics: Dict[str, List[float]],
+        title: str = "Khả năng Mở rộng (Scalability Analysis) theo Quy mô Điểm giao",
+        save_path: Optional[str] = None,
+        show: bool = True
+    ):
+        """
+        Vẽ đồ thị đường thể hiện sự thay đổi về Quãng đường và Thời gian khi số lượng điểm tăng (10, 50, 100...).
+        """
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+        fig.suptitle(title, fontsize=13, fontweight="bold", y=1.02)
+
+        # Trục 1: Quãng đường
+        ax1.plot(scales, greedy_metrics.get("distance", []), marker="o", color="#7f7f7f", linewidth=2.0, label="A* + Greedy (Baseline)")
+        ax1.plot(scales, ga_metrics.get("distance", []), marker="s", color="#2ca02c", linewidth=2.2, label="A* + GA (Đề xuất)")
+        ax1.set_title("Quãng đường theo Quy mô (km)", fontweight="bold")
+        ax1.set_xlabel("Số lượng điểm giao hàng (N)")
+        ax1.set_ylabel("Tổng quãng đường (km)")
+        ax1.grid(True, linestyle="--", alpha=0.5)
+        ax1.legend()
+
+        # Trục 2: Thời gian thực thi
+        ax2.plot(scales, greedy_metrics.get("exec_time", []), marker="o", color="#7f7f7f", linewidth=2.0, label="A* + Greedy (Baseline)")
+        ax2.plot(scales, ga_metrics.get("exec_time", []), marker="s", color="#2ca02c", linewidth=2.2, label="A* + GA (Đề xuất)")
+        ax2.set_title("Thời gian tính toán theo Quy mô (s)", fontweight="bold")
+        ax2.set_xlabel("Số lượng điểm giao hàng (N)")
+        ax2.set_ylabel("Thời gian (giây)")
+        ax2.grid(True, linestyle="--", alpha=0.5)
+        ax2.legend()
+
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            try:
+                print(f"[Visualizer] Đã lưu biểu đồ Scalability vào: {save_path}")
+            except UnicodeEncodeError:
+                print(f"[Visualizer] Da luu bieu do Scalability vao: {save_path}")
+
+        if show:
+            plt.show()
+        return fig, (ax1, ax2)
