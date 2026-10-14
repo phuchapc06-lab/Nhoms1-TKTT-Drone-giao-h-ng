@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument(
         "--benchmark",
         type=str,
-        default="10",
+        default="6",
         help="Quy mô số điểm giao hàng (10, 50, 100) hoặc đường dẫn file JSON"
     )
     parser.add_argument(
@@ -51,13 +51,13 @@ def parse_args():
     parser.add_argument(
         "--seed",
         type=int,
-        default=42,
+        default=123,
         help="Random seed để tái lập kịch bản thử nghiệm"
     )
     parser.add_argument(
         "--drones",
         type=int,
-        default=3,
+        default=2,
         help="Số lượng UAV khả dụng trong đội bay"
     )
     return parser.parse_args()
@@ -71,7 +71,7 @@ def main():
 
     # 1. Khởi tạo Pipeline tích hợp
     pipeline = UAVRoutingPipeline(
-        grid_size=(60, 60),
+        grid_size=(120, 120),
         num_drones=args.drones,
         drone_capacity=5.0,
         drone_speed=10.0,

@@ -56,6 +56,8 @@ detailed_paths = {(i, j): [(x, y), ...]}    # tùy chọn, cho Visualizer vẽ �
 
 - `FitnessCalculator.evaluate_solution(solution, dist_matrix, nodes, energy_manager=None) -> (fitness, total_cost, breakdown)`; `fitness = 1000 / (cost + 1)`, càng cao càng tốt.
 - Nếu truyền `energy_manager`, fitness gọi **`energy_manager.calculate_route_energy(route, dist_matrix, nodes) -> (total_energy, is_feasible)`**. TV3 phải cài đúng chữ ký này; `is_feasible=False` bị phạt `delta`.
+- `EnergyManager.insert_charging_stations(route, dist_matrix, nodes) -> (route_mới, is_valid)` tự chèn trạm gần nhất khả thi (có thể đi qua nhiều trạm); pin mặc định 100, giữ dự trữ 15%. Năng lượng mỗi chặng dùng tải còn lại `d * (1 + 0.1 * w)`. Fitness dùng route đã sửa để tính khoảng cách/khung giờ; thời gian sạc lấy từ `service_time` của node trạm.
+- Pipeline luôn khởi tạo `EnergyManager`, truyền vào GA/Fitness và chèn trạm trước khi trả kết quả. `is_valid` cấp lời giải là `True` nếu có ít nhất một tuyến giao hàng khả thi về pin; chỉ `False` khi mọi tuyến giao hàng đều không khả thi. Tuyến lỗi cụ thể vẫn được liệt kê trong `errors`.
 - Không có `energy_manager` → fitness ước lượng `E = tổng quãng đường * (1 + 0.1 * tổng tải)`.
 - `UAVVisualizer.plot_multi_uav_routes(nodes, no_fly_zones, solution, detailed_paths=None, save_path=None, show=True)` và `plot_convergence_curve(history_fitness, ...)` — GA cần trả về lịch sử best fitness theo thế hệ.
 

@@ -35,6 +35,12 @@ class FitnessCalculator:
         if not route or len(route) <= 2:
             return 0.0, {"distance": 0.0, "energy": 0.0, "tw_penalty": 0.0, "cap_penalty": 0.0}
 
+        evaluated_route = route
+        if energy_manager and hasattr(energy_manager, "insert_charging_stations"):
+            evaluated_route, _ = energy_manager.insert_charging_stations(
+                route, dist_matrix, nodes_dict
+            )
+
         total_distance = 0.0
         current_time = 0.0
         tw_penalty = 0.0
@@ -42,7 +48,7 @@ class FitnessCalculator:
         cap_penalty = 0.0
 
         # 1. Tính tổng khối lượng hàng ban đầu cần giao
-        for node_id in route:
+        for node_id in evaluated_route:
             if node_id in nodes_dict:
                 cargo_load += nodes_dict[node_id].get("demand", 0.0)
 
@@ -51,9 +57,9 @@ class FitnessCalculator:
             cap_penalty += (cargo_load - self.drone_capacity) * self.delta
 
         # 2. Duyệt từng chặng trong tuyến để tính khoảng cách và thời gian
-        for i in range(len(route) - 1):
-            u = route[i]
-            v = route[i + 1]
+        for i in range(len(evaluated_route) - 1):
+            u = evaluated_route[i]
+            v = evaluated_route[i + 1]
 
             dist = dist_matrix[u][v] if isinstance(dist_matrix, list) else dist_matrix[u, v]
             total_distance += dist
@@ -75,12 +81,21 @@ class FitnessCalculator:
                 tw_penalty += lateness * self.gamma
 
             # Thời gian phục vụ (giao hàng hoặc sạc)
-            current_time += node_v.get("service_time", 0.0)
+            service_time = node_v.get("service_time", 0.0)
+            if (
+                energy_manager
+                and node_v.get("type") == "charging"
+                and hasattr(energy_manager, "get_charging_time")
+            ):
+                service_time = energy_manager.get_charging_time(node_v)
+            current_time += service_time
 
         # 3. Tính năng lượng tiêu thụ (nếu TV3 đã kết nối EnergyManager, hoặc dùng ước lượng)
         total_energy = 0.0
         if energy_manager and hasattr(energy_manager, "calculate_route_energy"):
-            total_energy, is_feasible = energy_manager.calculate_route_energy(route, dist_matrix, nodes_dict)
+            total_energy, is_feasible = energy_manager.calculate_route_energy(
+                evaluated_route, dist_matrix, nodes_dict
+            )
             if not is_feasible:
                 cap_penalty += self.delta
         else:

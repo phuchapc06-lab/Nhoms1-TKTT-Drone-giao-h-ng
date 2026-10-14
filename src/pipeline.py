@@ -17,6 +17,7 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from algorithms.fitness import FitnessCalculator
+from algorithms.energy_manager import EnergyManager
 from utils.visualizer import UAVVisualizer
 from utils.validator import DataContractValidator
 from utils.data_generator import UDRPDataGenerator
@@ -46,6 +47,7 @@ class UAVRoutingPipeline:
             alpha=1.0, beta=1.5, gamma=5.0, delta=1000.0,
             drone_speed=drone_speed, drone_capacity=drone_capacity
         )
+        self.energy_manager = EnergyManager()
         self.visualizer = UAVVisualizer(grid_size=grid_size)
         self.validator = DataContractValidator()
 
@@ -241,6 +243,7 @@ class UAVRoutingPipeline:
                 dist_matrix=self.dist_matrix,
                 num_drones=self.num_drones,
                 fitness_calc=self.fitness_calc,
+                energy_manager=self.energy_manager,
                 pop_size=pop_size,
                 generations=generations,
                 seed=self.seed
@@ -295,7 +298,9 @@ class UAVRoutingPipeline:
             scores = []
             for chrom in population:
                 sol = split_chromosome(chrom)
-                fitness, _, _ = self.fitness_calc.evaluate_solution(sol, self.dist_matrix, self.nodes)
+                fitness, _, _ = self.fitness_calc.evaluate_solution(
+                    sol, self.dist_matrix, self.nodes, self.energy_manager
+                )
                 scores.append(fitness)
 
                 if fitness > best_fitness:
@@ -366,9 +371,15 @@ class UAVRoutingPipeline:
         else:
             raise ValueError(f"Khong ho tro thuat toan: {algorithm}")
 
+        solution, energy_valid, energy_errors = self._insert_charging_stops(solution)
         exec_time = time.time() - start_time
-        fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(solution, self.dist_matrix, self.nodes)
-        is_valid, validation_errors = self.validator.validate_solution(solution, self.nodes, self.drone_capacity)
+        fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(
+            solution, self.dist_matrix, self.nodes, self.energy_manager
+        )
+        _, validation_errors = self.validator.validate_solution(
+            solution, self.nodes, self.drone_capacity
+        )
+        validation_errors.extend(energy_errors)
 
         res = {
             "algorithm": algo_name,
@@ -378,7 +389,7 @@ class UAVRoutingPipeline:
             "distance": round(breakdown["distance"], 2),
             "energy": round(breakdown["energy"], 2),
             "tw_penalty": round(breakdown["tw_penalty"], 2),
-            "is_valid": is_valid,
+            "is_valid": energy_valid,
             "errors": validation_errors,
             "solution": solution
         }
@@ -407,6 +418,32 @@ class UAVRoutingPipeline:
                 )
 
         return res
+
+    def _insert_charging_stops(
+        self, solution: List[List[int]]
+    ) -> Tuple[List[List[int]], bool, List[str]]:
+        """Add feasible charging stops to every drone route."""
+        planned_solution = []
+        errors = []
+        feasible_delivery_routes = []
+
+        for drone_idx, route in enumerate(solution):
+            planned_route, is_valid = self.energy_manager.insert_charging_stations(
+                route, self.dist_matrix, self.nodes
+            )
+            planned_solution.append(planned_route)
+            has_deliveries = any(
+                self.nodes.get(node_id, {}).get("type") == "delivery"
+                for node_id in route
+            )
+            if has_deliveries:
+                feasible_delivery_routes.append(is_valid)
+            if has_deliveries and not is_valid:
+                errors.append(
+                    f"Drone #{drone_idx + 1} cannot complete its route with the available battery and charging stations."
+                )
+
+        return planned_solution, any(feasible_delivery_routes), errors
 
     def compare_algorithms(self, save_dir: Optional[str] = "docs/figures", show_plot: bool = False):
         """

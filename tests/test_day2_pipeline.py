@@ -5,6 +5,8 @@ import sys
 import os
 import shutil
 
+import numpy as np
+
 # Dam bao in tieng Viet UTF-8
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -117,5 +119,72 @@ def test_day2():
     print("  🎉 TẤT CẢ KIỂM THỬ NGÀY 2 ĐÃ VƯỢT QUA 100% THÀNH CÔNG RỰC RỠ!   ")
     print("==================================================================")
 
+def test_pipeline_inserts_charging_stops():
+    pipeline = UAVRoutingPipeline(num_drones=1, drone_capacity=5.0)
+    pipeline.nodes = {
+        0: {"id": 0, "type": "depot", "demand": 0.0, "tw": (0, 1000), "service_time": 0},
+        1: {"id": 1, "type": "delivery", "demand": 1.0, "tw": (0, 1000), "service_time": 0},
+        2: {"id": 2, "type": "charging", "demand": 0.0, "tw": (0, 1000), "service_time": 15},
+    }
+    pipeline.dist_matrix = np.array([
+        [0.0, 50.0, 20.0],
+        [60.0, 0.0, 20.0],
+        [20.0, 20.0, 0.0],
+    ])
+
+    result = pipeline.run_experiment(
+        algorithm="greedy", save_figure_dir=None, show_plot=False
+    )
+
+    assert result["is_valid"], result["errors"]
+    assert result["solution"] == [[0, 1, 2, 0]]
+    assert result["distance"] == 90.0
+    assert result["energy"] == 95.0
+
+def test_pipeline_is_valid_when_at_least_one_delivery_route_is_energy_feasible():
+    pipeline = UAVRoutingPipeline(num_drones=2, drone_capacity=5.0)
+    pipeline.nodes = {
+        0: {"id": 0, "type": "depot", "demand": 0.0, "tw": (0, 1000), "service_time": 0},
+        1: {"id": 1, "type": "delivery", "demand": 1.0, "tw": (0, 1000), "service_time": 0},
+        2: {"id": 2, "type": "delivery", "demand": 1.0, "tw": (0, 1000), "service_time": 0},
+    }
+    pipeline.dist_matrix = np.array([
+        [0.0, 10.0, 200.0],
+        [10.0, 0.0, 10.0],
+        [200.0, 10.0, 0.0],
+    ])
+
+    routes, is_valid, errors = pipeline._insert_charging_stops(
+        [[0, 1, 0], [0, 2, 0]]
+    )
+
+    assert routes == [[0, 1, 0], [0, 2, 0]]
+    assert is_valid
+    assert len(errors) == 1
+    assert "Drone #2" in errors[0]
+
+def test_pipeline_is_invalid_when_all_delivery_routes_are_energy_infeasible():
+    pipeline = UAVRoutingPipeline(num_drones=2, drone_capacity=5.0)
+    pipeline.nodes = {
+        0: {"id": 0, "type": "depot", "demand": 0.0, "tw": (0, 1000), "service_time": 0},
+        1: {"id": 1, "type": "delivery", "demand": 1.0, "tw": (0, 1000), "service_time": 0},
+        2: {"id": 2, "type": "delivery", "demand": 1.0, "tw": (0, 1000), "service_time": 0},
+    }
+    pipeline.dist_matrix = np.array([
+        [0.0, 200.0, 200.0],
+        [200.0, 0.0, 200.0],
+        [200.0, 200.0, 0.0],
+    ])
+
+    _, is_valid, errors = pipeline._insert_charging_stops(
+        [[0, 1, 0], [0, 2, 0]]
+    )
+
+    assert not is_valid
+    assert len(errors) == 2
+
 if __name__ == "__main__":
+    test_pipeline_inserts_charging_stops()
+    test_pipeline_is_valid_when_at_least_one_delivery_route_is_energy_feasible()
+    test_pipeline_is_invalid_when_all_delivery_routes_are_energy_infeasible()
     test_day2()
