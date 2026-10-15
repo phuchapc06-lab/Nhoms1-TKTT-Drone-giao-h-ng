@@ -142,7 +142,9 @@ class EnergyManager:
                             best_detour = detour
                             best_cs = cs
 
-                if best_cs is not None:
+                # Đang đứng ở trạm sạc (pin vừa nạp đầy) mà vẫn không đủ pin bay tới v -> chèn thêm trạm nào
+                # cũng vô ích. Trước đây best_cs chính là u (đường vòng = 0) nên bị chèn lại mãi -> vòng lặp vô hạn.
+                if best_cs is not None and best_cs != u:
                     # Chèn trạm sạc vào lộ trình
                     dist_to_cs = dist_matrix[u][best_cs] if isinstance(dist_matrix, list) else dist_matrix[u, best_cs]
                     e_to_cs = self.calculate_segment_energy(dist_to_cs, current_cargo)
