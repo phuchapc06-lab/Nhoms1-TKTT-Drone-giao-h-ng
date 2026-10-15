@@ -162,11 +162,19 @@ class GeneticAlgorithm:
         - cost, breakdown: đúng giá trị của TV5 (dùng để báo cáo).
         - fitness: dùng để chọn lọc, = 1000 / (cost + (factor - 1) * cap_penalty + 1);
           bằng fitness của TV5 khi lời giải thỏa ràng buộc hoặc factor = 1.
+        Có EnergyManager (TV3): chấm điểm tuyến SAU khi chèn trạm sạc, giống bước pipeline làm sau GA.
+        Nếu không, tuyến cần ghé trạm sạc bị phạt như cạn pin dù pipeline sẽ sửa được.
         """
         key = tuple(chromosome)
         if key not in self._cache:
+            solution = self.decode(chromosome)
+            if self.energy_manager is not None and hasattr(self.energy_manager, "repair_route_with_charging"):
+                solution = [
+                    self.energy_manager.repair_route_with_charging(route, self.dist_matrix, self.nodes)[0]
+                    for route in solution
+                ]
             _, cost, breakdown = self.fitness_calc.evaluate_solution(
-                self.decode(chromosome), self.dist_matrix, self.nodes, self.energy_manager
+                solution, self.dist_matrix, self.nodes, self.energy_manager
             )
             penalized = cost + (self.constraint_penalty_factor - 1.0) * breakdown["cap_penalty"]
             self._cache[key] = (1000.0 / (penalized + 1.0), cost, breakdown)
@@ -248,7 +256,7 @@ class GeneticAlgorithm:
             - best_fitness: độ thích nghi (dùng để chọn lọc, xem _evaluate) của lời giải đó
             - history: best fitness tốt nhất tính đến mỗi thế hệ (dùng cho UAVVisualizer.plot_convergence_curve)
         Sau khi chạy có thêm các thuộc tính: best_chromosome, best_cost, best_breakdown (giá trị của TV5),
-        runtime (giây).
+        runtime (giây). best_solution chưa chứa trạm sạc; khi có EnergyManager, best_cost là cost sau khi chèn trạm sạc.
         """
         start = time.perf_counter()
         best_chromosome: Optional[Chromosome] = None

@@ -4,6 +4,7 @@ Unit test kiem thu doc lap cho module GA cua Thanh vien 1 (GeneticAlgorithm).
 import sys
 import os
 import math
+import threading
 import numpy as np
 
 # Dam bao ho tro tieng Viet tren Windows console
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plt
 
 from algorithms.genetic_algorithm import GeneticAlgorithm
 from algorithms.fitness import FitnessCalculator
+from algorithms.energy_manager import EnergyManager
 from utils.visualizer import UAVVisualizer
 
 
@@ -294,6 +296,40 @@ def test_encode_and_initial_solutions():
     print("-> encode & initial_solutions hoat dong chinh xac!")
 
 
+def test_energy_manager_with_charging():
+    print("\n11. Kiem tra danh gia co EnergyManager (cham diem sau khi chen tram sac):")
+    nodes, dist = make_mock_data()
+    em = EnergyManager(battery_capacity=80.0)  # pin nho -> tuyen dai phai ghe tram sac 9
+    ga = GeneticAlgorithm(nodes, dist, num_drones=3, energy_manager=em, generations=60, seed=2)
+
+    chrom = ga.encode([[0, 1, 6, 2, 3, 0], [0, 7, 8, 0], [0, 4, 5, 0]])
+    raw = ga.decode(chrom)
+    repaired = [em.repair_route_with_charging(r, dist, nodes)[0] for r in raw]
+    assert any(9 in r for r in repaired), "Pin 80Wh: phai co tuyen can ghe tram sac 9"
+
+    _, cost, breakdown = ga._evaluate(chrom)
+    expected = FitnessCalculator().evaluate_solution(repaired, dist, nodes, em)
+    assert (cost, breakdown) == expected[1:], "Phai cham diem tuyen da chen tram sac"
+    raw_cost = FitnessCalculator().evaluate_solution(raw, dist, nodes, em)[1]
+    print(f"-> Cost chua chen tram sac={raw_cost:.2f} (bi phat thieu pin) -> sau khi chen={cost:.2f}")
+
+    # Hoi quy loi vong lap vo han cua repair_route_with_charging: tu tram sac 9 (pin day) cho 12kg
+    # khong toi duoc khach 3 -> truoc day chen tram 9 mai mai
+    result = {}
+    worker = threading.Thread(
+        target=lambda: result.update(r=em.repair_route_with_charging([0, 5, 3, 1, 2, 4, 6, 7, 8, 0], dist, nodes)),
+        daemon=True
+    )
+    worker.start()
+    worker.join(5)
+    assert "r" in result, "repair_route_with_charging bi treo (vong lap vo han)"
+    assert result["r"][2] is False, "Tuyen khong the bay toi phai bi danh dau khong kha thi"
+
+    solution, _, _ = ga.evolve()
+    check_solution(solution, ga)  # GA tra tuyen chua co tram sac, pipeline tu chen sau
+    print("-> Danh gia sau khi chen tram sac hoat dong chinh xac!")
+
+
 def save_demo_plots(out_dir):
     """Chay GA tren du lieu gia lap va luu hinh tuyen bay + duong hoi tu (de xem bang mat)."""
     nodes, dist = make_mock_data()
@@ -326,6 +362,7 @@ if __name__ == "__main__":
     test_evolve()
     test_seed_reproducible()
     test_encode_and_initial_solutions()
+    test_energy_manager_with_charging()
 
     # Hinh demo luu vao data/processed/ (thu muc nay da bi .gitignore)
     save_demo_plots(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "processed")))
