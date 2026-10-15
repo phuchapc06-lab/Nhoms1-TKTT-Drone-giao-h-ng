@@ -138,10 +138,28 @@ class UAVRoutingPipeline:
 
     def compute_distance_matrix(self, use_astar: bool = True):
         """
-        Tinh ma tran khoang cach giua tat ca cac cap diem.
-        Neu use_astar=True, su dung A* de ne cac vung cam bay.
+        Tính ma trận khoảng cách giữa tất cả các cặp điểm.
+        Sử dụng module tối ưu hóa của Thành viên 2 (A* tối ưu + Line-of-sight + Cache).
         """
         num_nodes = len(self.nodes)
+        if use_astar:
+            try:
+                from utils.distance_matrix import compute_distance_matrix as tv2_compute_matrix
+                dist, paths = tv2_compute_matrix(self.nodes, self.no_fly_zones, self.grid_size)
+                # Thay thế inf (nếu có điểm rơi vào NFZ) bằng khoảng cách Euclidean phạt để thuật toán GA không bị crash
+                for i in range(num_nodes):
+                    for j in range(num_nodes):
+                        if math.isinf(dist[i, j]):
+                            pi = self.nodes[i]["pos"]
+                            pj = self.nodes[j]["pos"]
+                            dist[i, j] = math.dist(pi, pj) * 2.0
+                self.dist_matrix = dist
+                self.detailed_paths = paths
+                print(f"[Pipeline] Đã tính ma trận khoảng cách tối ưu (A* Octile + Cache TV2): {num_nodes}x{num_nodes}.")
+                return
+            except Exception as e:
+                print(f"[Pipeline] Lưu ý: Dùng fallback A* baseline do: {e}")
+
         self.dist_matrix = np.zeros((num_nodes, num_nodes))
         self.detailed_paths = {}
 
