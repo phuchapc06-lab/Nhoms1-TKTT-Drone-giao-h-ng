@@ -26,13 +26,15 @@ class GeneticAlgorithm:
         num_drones: int,
         fitness_calc: Optional[FitnessCalculator] = None,
         energy_manager: Optional[Any] = None,
-        pop_size: int = 80,
-        generations: int = 300,
+        # Mặc định chọn từ thực nghiệm tinh chỉnh trên benchmark 10 & 50 điểm (src/utils/ga_tuning.py)
+        pop_size: int = 100,
+        generations: int = 2000,
         crossover_rate: float = 0.9,
-        mutation_rate: float = 0.2,
+        mutation_rate: float = 0.5,
         tournament_size: int = 3,
         elitism: int = 2,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        initial_solutions: Optional[List[List[List[int]]]] = None
     ):
         if num_drones < 1:
             raise ValueError("num_drones phải >= 1")
@@ -72,6 +74,10 @@ class GeneticAlgorithm:
         # K-1 vách ngăn: -1, -2, ..., -(K-1)
         self.separators: List[int] = list(range(-1, -num_drones, -1))
         self.genes: List[int] = self.customers + self.separators
+        self._customer_set = set(self.customers)
+
+        # Lời giải có sẵn (vd. Greedy của TV6) được đưa vào quần thể ban đầu; mã hóa ngay để báo lỗi sớm
+        self.initial_chromosomes: List[Chromosome] = [self.encode(s) for s in (initial_solutions or [])]
 
         # Cache: tuple(chromosome) -> (fitness, cost, breakdown)
         self._cache: Dict[Tuple[int, ...], Tuple[float, float, Dict[str, float]]] = {}
@@ -106,6 +112,27 @@ class GeneticAlgorithm:
             solution.append([DEPOT_ID] + current + [DEPOT_ID])
         return solution
 
+    def encode(self, solution: List[List[int]]) -> Chromosome:
+        """
+        Mã hóa ngược lời giải (danh sách tuyến) thành chromosome; bỏ qua Depot và trạm sạc trong tuyến.
+        Ví dụ (K = 3): [[0, 3, 1, 0], [0, 4, 0]]  ->  [3, 1, -1, 4, -2]
+        """
+        routes = [[nid for nid in route if nid in self._customer_set] for route in solution]
+        routes = [route for route in routes if route]
+        if len(routes) > self.num_drones:
+            raise ValueError(f"Lời giải có {len(routes)} tuyến, nhiều hơn số Drone K = {self.num_drones}")
+
+        chromosome: Chromosome = []
+        for idx, route in enumerate(routes):
+            if idx > 0:
+                chromosome.append(self.separators[idx - 1])
+            chromosome.extend(route)
+        chromosome.extend(self.separators[max(len(routes) - 1, 0):])  # vách ngăn còn thừa -> tuyến rỗng ở cuối
+
+        if sorted(chromosome) != sorted(self.genes):
+            raise ValueError("Lời giải phải giao mỗi điểm giao hàng đúng 1 lần")
+        return chromosome
+
     def _random_chromosome(self) -> Chromosome:
         """Sinh một cá thể ngẫu nhiên: xáo trộn khách hàng và vách ngăn."""
         chromosome = self.genes[:]
@@ -113,8 +140,10 @@ class GeneticAlgorithm:
         return chromosome
 
     def _init_population(self) -> List[Chromosome]:
-        """Khởi tạo quần thể ban đầu gồm pop_size cá thể ngẫu nhiên."""
-        return [self._random_chromosome() for _ in range(self.pop_size)]
+        """Khởi tạo quần thể: các lời giải có sẵn (nếu có) + cá thể ngẫu nhiên cho đủ pop_size."""
+        population = [c[:] for c in self.initial_chromosomes[:self.pop_size]]
+        population += [self._random_chromosome() for _ in range(self.pop_size - len(population))]
+        return population
 
     # ------------------------------------------------------------------
     # 2. Đánh giá độ thích nghi

@@ -57,7 +57,7 @@ def test_init_and_validation():
     assert GeneticAlgorithm(nodes, dist, num_drones=1).separators == [], "K=1 -> khong co vach ngan"
 
     for bad_kwargs in ({"num_drones": 0}, {"num_drones": 2, "pop_size": 1},
-                       {"num_drones": 2, "mutation_rate": 1.5}, {"num_drones": 2, "elitism": 80}):
+                       {"num_drones": 2, "mutation_rate": 1.5}, {"num_drones": 2, "pop_size": 10, "elitism": 10}):
         try:
             GeneticAlgorithm(nodes, dist, **bad_kwargs)
             assert False, f"Phai bao loi voi tham so {bad_kwargs}"
@@ -252,6 +252,41 @@ def test_seed_reproducible():
     print("-> Cung seed -> cung ket qua!")
 
 
+def test_encode_and_initial_solutions():
+    print("\n10. Kiem tra encode & khoi tao quan the tu loi giai co san:")
+    nodes, dist = make_mock_data()
+    ga = GeneticAlgorithm(nodes, dist, num_drones=3, seed=4)
+
+    # encode la nguoc cua decode; bo qua tram sac (9) neu co trong tuyen
+    solution = [[0, 3, 1, 0], [0, 5, 9, 2, 0], [0, 4, 6, 7, 8, 0]]
+    chrom = ga.encode(solution)
+    assert chrom == [3, 1, -1, 5, 2, -2, 4, 6, 7, 8]
+    assert ga.decode(chrom) == [[0, 3, 1, 0], [0, 5, 2, 0], [0, 4, 6, 7, 8, 0]]
+    # It tuyen hon K -> vach ngan con thua dat o cuoi
+    assert ga.encode([[0, 1, 2, 3, 4, 5, 6, 7, 8, 0]]) == [1, 2, 3, 4, 5, 6, 7, 8, -1, -2]
+
+    for bad in ([[0, 1, 0], [0, 2, 0], [0, 3, 0], [0, 4, 5, 6, 7, 8, 0]],  # 4 tuyen > K = 3
+                [[0, 1, 2, 3, 0]],                                       # thieu khach
+                [[0, 1, 1, 2, 3, 4, 5, 6, 7, 8, 0]]):                    # trung khach
+        try:
+            ga.encode(bad)
+            assert False, f"Phai bao loi voi loi giai {bad}"
+        except ValueError:
+            pass
+
+    # Ca the dau tien cua quan the la loi giai co san; elitism -> GA khong bao gio te hon no
+    seeded = GeneticAlgorithm(nodes, dist, num_drones=3, pop_size=30, generations=40,
+                              initial_solutions=[solution], seed=4)
+    population = seeded._init_population()
+    assert population[0] == chrom and len(population) == 30
+    assert all(is_valid_chromosome(c, seeded) for c in population)
+    seeded_cost = FitnessCalculator().evaluate_solution(seeded.decode(chrom), dist, nodes)[1]
+    seeded.evolve()
+    assert seeded.best_cost <= seeded_cost, "GA khoi tao tu loi giai co san khong duoc te hon loi giai do"
+    print(f"-> Cost loi giai co san={seeded_cost:.2f} -> GA={seeded.best_cost:.2f}")
+    print("-> encode & initial_solutions hoat dong chinh xac!")
+
+
 def save_demo_plots(out_dir):
     """Chay GA tren du lieu gia lap va luu hinh tuyen bay + duong hoi tu (de xem bang mat)."""
     nodes, dist = make_mock_data()
@@ -283,6 +318,7 @@ if __name__ == "__main__":
     test_swap_mutation()
     test_evolve()
     test_seed_reproducible()
+    test_encode_and_initial_solutions()
 
     # Hinh demo luu vao data/processed/ (thu muc nay da bi .gitignore)
     save_demo_plots(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "processed")))
