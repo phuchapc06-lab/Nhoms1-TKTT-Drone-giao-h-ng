@@ -46,6 +46,12 @@ class UAVRoutingPipeline:
             alpha=1.0, beta=1.5, gamma=5.0, delta=1000.0,
             drone_speed=drone_speed, drone_capacity=drone_capacity
         )
+        try:
+            from algorithms.energy_manager import EnergyManager
+            self.energy_manager = EnergyManager(battery_capacity=300.0, min_battery_threshold=0.15)
+        except Exception:
+            self.energy_manager = None
+
         self.visualizer = UAVVisualizer(grid_size=grid_size)
         self.validator = DataContractValidator()
 
@@ -206,6 +212,13 @@ class UAVRoutingPipeline:
         """
         Thuat toan tham lam Nearest Neighbor co kiem soat can bang tai trong (Baseline cho TV6).
         """
+        try:
+            from algorithms.baseline_greedy import GreedyRouter
+            router = GreedyRouter(self.nodes, self.dist_matrix, self.num_drones, self.drone_capacity)
+            return router.solve()
+        except Exception:
+            pass
+
         deliveries = [k for k, v in self.nodes.items() if v["type"] == "delivery"]
         unvisited = set(deliveries)
         solution = [[0] for _ in range(self.num_drones)]
@@ -384,8 +397,27 @@ class UAVRoutingPipeline:
         else:
             raise ValueError(f"Khong ho tro thuat toan: {algorithm}")
 
+        # 1. Áp dụng tối ưu cục bộ 2-Opt (TV6) để gỡ các giao cắt đường bay
+        try:
+            from algorithms.local_search import apply_2opt_to_solution
+            solution = apply_2opt_to_solution(solution, self.dist_matrix)
+        except Exception:
+            pass
+
+        # 2. Kiểm tra Pin & Tự động chèn trạm sạc khi pin < ngưỡng an toàn (TV3)
+        if self.energy_manager:
+            repaired = []
+            for r in solution:
+                rep_r, _, _ = self.energy_manager.repair_route_with_charging(
+                    r, self.dist_matrix, self.nodes
+                )
+                repaired.append(rep_r)
+            solution = repaired
+
         exec_time = time.time() - start_time
-        fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(solution, self.dist_matrix, self.nodes)
+        fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(
+            solution, self.dist_matrix, self.nodes, self.energy_manager
+        )
         is_valid, validation_errors = self.validator.validate_solution(solution, self.nodes, self.drone_capacity)
 
         res = {

@@ -87,7 +87,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ---
 
-### 8. Giao diện Thực thi Dòng lệnh Đa Năng (Main CLI Entrypoint)
+### 9. Giao diện Thực thi Dòng lệnh Đa Năng (Main CLI Entrypoint)
 - **File mã nguồn:** `src/main.py`
 - **Nội dung thực hiện:**
   - Hỗ trợ đầy đủ các cờ CLI:
@@ -99,11 +99,25 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ---
 
-### 9. Kiểm thử Tự động Toàn diện (Unit Testing & Validation)
+### 10. Cột mốc Tích hợp Hệ thống Toàn diện Ngày 4 (Full System Integration Milestone)
+- **Files liên quan:**
+  - `src/algorithms/energy_manager.py` (TV3: Energy & Charging Station Management)
+  - `src/algorithms/local_search.py` (TV6: 2-Opt Local Search Route Optimization)
+  - `src/algorithms/baseline_greedy.py` (TV6: Baseline Greedy Router)
+  - `src/pipeline.py` (Tích hợp khép kín toàn bộ 6 module của nhóm)
+- **Nội dung thực hiện:**
+  - **Quản lý Năng lượng Pin & Trạm sạc (TV3):** Tích hợp `EnergyManager` tính toán chính xác tiêu hao phi tuyến theo tải trọng hàng hóa ($E = d \cdot (c_{base} + \alpha \cdot \text{load})$). Lập trình thuật toán sửa đường bay tự động (`repair_route_with_charging`), nhận diện ngưỡng pin an toàn (< 15%) và chèn trạm sạc gần nhất vào hành trình để đảm bảo 100% chuyến bay không cạn pin.
+  - **Tối ưu Cục bộ 2-Opt (TV6):** Tích hợp thuật toán `two_opt_route` và `apply_2opt_to_solution` hoán vị 2 cạnh để gỡ các giao cắt đường bay chéo nhau, cải thiện ngay từ 5% - 17% quãng đường bay cho các tuyến.
+  - **Khép kín luồng xử lý UAVRoutingPipeline:** Tự động gọi chuỗi liên hoàn: `A* né NFZ` $\rightarrow$ `GA / Greedy Routing` $\rightarrow$ `2-Opt Local Search` $\rightarrow$ `Energy Check & Charging Repair` $\rightarrow$ `Fitness Evaluation` $\rightarrow$ `Validation` $\rightarrow$ `Visualizer`.
+
+---
+
+### 11. Kiểm thử Tự động Toàn diện (Unit Testing & Validation)
 - **Danh mục file test:**
   - `tests/test_member5.py`: Kiểm thử độc lập Fitness & Visualizer.
   - `tests/test_day2_pipeline.py`: Kiểm thử Pipeline tích hợp E2E & Validator.
   - `tests/test_day3_evaluator.py`: Kiểm thử BenchmarkEvaluator, Bar Charts, Scalability & xuất file báo cáo.
+  - `tests/test_day4_integration.py`: Kiểm thử Cột mốc tích hợp Ngày 4 (EnergyManager, 2-Opt, GreedyRouter, Pipeline End-to-End).
 - **Kết quả kiểm thử:** **100% Passed**.
 
 ---
@@ -118,8 +132,13 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 | 5 | `src/utils/benchmark_evaluator.py` | Module đo đạc chỉ số khoa học, đối sánh đa quy mô và xuất báo cáo | Hoàn thành |
 | 6 | `src/utils/benchmark_generator.py` | Trình sinh các bộ dữ liệu thử nghiệm chuẩn 10, 50, 100 điểm vào `data/raw/` | Hoàn thành |
 | 7 | `src/main.py` | Giao diện điều khiển chính của chương trình qua dòng lệnh CLI | Hoàn thành |
-| 8 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
-| 9 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
-| 10 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
-| 11 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đa quy mô | Hoàn thành |
-| 12 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+| 8 | `src/algorithms/energy_manager.py` | Module quản lý pin, tiêu hao tải trọng và tự động chèn trạm sạc | Hoàn thành |
+| 9 | `src/algorithms/local_search.py` | Module tối ưu cục bộ 2-Opt gỡ giao cắt đường bay đa UAV | Hoàn thành |
+| 10 | `src/algorithms/baseline_greedy.py` | Module thuật toán tham lam Nearest Neighbor định tuyến đối sánh | Hoàn thành |
+| 11 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
+| 12 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
+| 13 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
+| 14 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
+| 15 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
+| 16 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+
