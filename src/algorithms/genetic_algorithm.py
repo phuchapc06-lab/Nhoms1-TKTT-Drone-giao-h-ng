@@ -34,7 +34,8 @@ class GeneticAlgorithm:
         tournament_size: int = 3,
         elitism: int = 2,
         seed: Optional[int] = None,
-        initial_solutions: Optional[List[List[List[int]]]] = None
+        initial_solutions: Optional[List[List[List[int]]]] = None,
+        constraint_penalty_factor: float = 100.0
     ):
         if num_drones < 1:
             raise ValueError("num_drones phải >= 1")
@@ -48,6 +49,8 @@ class GeneticAlgorithm:
             raise ValueError("tournament_size phải >= 1")
         if not (0 <= elitism < pop_size):
             raise ValueError("elitism phải nằm trong [0, pop_size)")
+        if constraint_penalty_factor < 1.0:
+            raise ValueError("constraint_penalty_factor phải >= 1")
 
         self.nodes = nodes
         self.dist_matrix = dist_matrix
@@ -60,6 +63,10 @@ class GeneticAlgorithm:
         self.mutation_rate = mutation_rate
         self.tournament_size = tournament_size
         self.elitism = elitism
+        # Hệ số nhân phần phạt vi phạm ràng buộc cứng (quá tải / cạn pin) khi chọn lọc.
+        # delta của FitnessCalculator quá nhẹ ở quy mô lớn: quá tải 0.05 kg chỉ bị phạt 50 trong cost ~10^4,
+        # nên GA chấp nhận vi phạm nhỏ. Đặt 1.0 để dùng nguyên fitness của TV5.
+        self.constraint_penalty_factor = constraint_penalty_factor
 
         # Bộ sinh số ngẫu nhiên riêng -> không ảnh hưởng random toàn cục của module khác
         self.rng = random.Random(seed)
@@ -152,12 +159,17 @@ class GeneticAlgorithm:
         """
         Đánh giá cá thể bằng FitnessCalculator của TV5.
         Trả về (fitness, cost, breakdown); kết quả được cache theo chromosome.
+        - cost, breakdown: đúng giá trị của TV5 (dùng để báo cáo).
+        - fitness: dùng để chọn lọc, = 1000 / (cost + (factor - 1) * cap_penalty + 1);
+          bằng fitness của TV5 khi lời giải thỏa ràng buộc hoặc factor = 1.
         """
         key = tuple(chromosome)
         if key not in self._cache:
-            self._cache[key] = self.fitness_calc.evaluate_solution(
+            _, cost, breakdown = self.fitness_calc.evaluate_solution(
                 self.decode(chromosome), self.dist_matrix, self.nodes, self.energy_manager
             )
+            penalized = cost + (self.constraint_penalty_factor - 1.0) * breakdown["cap_penalty"]
+            self._cache[key] = (1000.0 / (penalized + 1.0), cost, breakdown)
         return self._cache[key]
 
     def _fitness(self, chromosome: Chromosome) -> float:
@@ -233,9 +245,10 @@ class GeneticAlgorithm:
         Chạy GA qua `generations` thế hệ (thế hệ đầu tiên là quần thể khởi tạo ngẫu nhiên).
         Trả về:
             - best_solution: lời giải tốt nhất theo Data Contract
-            - best_fitness: độ thích nghi của lời giải đó
+            - best_fitness: độ thích nghi (dùng để chọn lọc, xem _evaluate) của lời giải đó
             - history: best fitness tốt nhất tính đến mỗi thế hệ (dùng cho UAVVisualizer.plot_convergence_curve)
-        Sau khi chạy có thêm các thuộc tính: best_chromosome, best_cost, best_breakdown, runtime (giây).
+        Sau khi chạy có thêm các thuộc tính: best_chromosome, best_cost, best_breakdown (giá trị của TV5),
+        runtime (giây).
         """
         start = time.perf_counter()
         best_chromosome: Optional[Chromosome] = None

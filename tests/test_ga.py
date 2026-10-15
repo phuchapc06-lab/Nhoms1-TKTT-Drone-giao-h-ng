@@ -57,7 +57,8 @@ def test_init_and_validation():
     assert GeneticAlgorithm(nodes, dist, num_drones=1).separators == [], "K=1 -> khong co vach ngan"
 
     for bad_kwargs in ({"num_drones": 0}, {"num_drones": 2, "pop_size": 1},
-                       {"num_drones": 2, "mutation_rate": 1.5}, {"num_drones": 2, "pop_size": 10, "elitism": 10}):
+                       {"num_drones": 2, "mutation_rate": 1.5}, {"num_drones": 2, "pop_size": 10, "elitism": 10},
+                       {"num_drones": 2, "constraint_penalty_factor": 0.5}):
         try:
             GeneticAlgorithm(nodes, dist, **bad_kwargs)
             assert False, f"Phai bao loi voi tham so {bad_kwargs}"
@@ -120,7 +121,13 @@ def test_evaluate():
     fitness, cost, breakdown = ga._evaluate(chrom)
     expected = FitnessCalculator().evaluate_solution(ga.decode(chrom), dist, nodes)
     assert fitness > 0 and cost > 0
-    assert (fitness, cost) == expected[:2], "Phai khop voi FitnessCalculator cua TV5"
+    assert (cost, breakdown) == expected[1:], "cost & breakdown phai khop voi FitnessCalculator cua TV5"
+    # Chon loc dung phat vi pham nang hon (x constraint_penalty_factor)
+    penalized = cost + (ga.constraint_penalty_factor - 1) * breakdown["cap_penalty"]
+    assert math.isclose(fitness, 1000.0 / (penalized + 1.0))
+    # factor = 1 -> dung nguyen fitness cua TV5
+    plain = GeneticAlgorithm(nodes, dist, num_drones=3, constraint_penalty_factor=1.0)
+    assert plain._evaluate(chrom)[:2] == expected[:2], "factor=1 phai trung fitness cua TV5"
 
     ga._evaluate(chrom)
     assert len(ga._cache) == 1, "Danh gia lai cung chromosome phai dung cache"
