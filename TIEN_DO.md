@@ -18,11 +18,12 @@ python src/main.py --algorithm ga --benchmark 10
 # 3. Chạy kiểm thử tự động đo đạc đa quy mô (10, 20, 30 điểm) và xuất báo cáo khoa học
 python src/main.py --evaluate-all
 
-# 4. Chạy toàn bộ các bài Unit Test
-python tests/test_ga.py              # Test giải thuật GA (TV1) - 100% Passed
-python tests/test_member5.py         # Test Fitness & Visualizer (TV5) - 100% Passed
-python tests/test_day2_pipeline.py   # Test Pipeline E2E & Validator (TV5) - 100% Passed
-python tests/test_day3_evaluator.py  # Test Evaluator & Metrics Suite (TV5) - 100% Passed
+# 4. Chạy toàn bộ các bài Unit Test độc lập (100% Passed)
+python tests/test_distance_matrix.py # Test A* tối ưu & Ma trận khoảng cách (TV2) - Passed 100%
+python tests/test_ga.py              # Test giải thuật GA Core (TV1) - Passed 100%
+python tests/test_member5.py         # Test Fitness & Visualizer (TV5) - Passed 100%
+python tests/test_day2_pipeline.py   # Test Pipeline E2E & Validator (TV5) - Passed 100%
+python tests/test_day3_evaluator.py  # Test Evaluator & Metrics Suite (TV5) - Passed 100%
 ```
 
 ---
@@ -37,10 +38,21 @@ python tests/test_day3_evaluator.py  # Test Evaluator & Metrics Suite (TV5) - 10
 | 4 | **Pipeline điều phối E2E & CLI** | `src/pipeline.py`, `src/main.py` | **TV5 (Nguyễn Phúc Hà)** | **Đã hoàn thành 100%** |
 | 5 | **Bộ đo đạc thực nghiệm khoa học** | `src/utils/benchmark_evaluator.py` | **TV5 (Nguyễn Phúc Hà)** | **Đã hoàn thành 100%** (Xuất `docs/EXPERIMENT_RESULTS.md`) |
 | 6 | **Giải thuật Di truyền (GA Core)** | `src/algorithms/genetic_algorithm.py` | **TV1 (Sieqhart262)** | **Đã hoàn thành 100%** (Đã review & merge PR #3 vào main) |
-| 7 | **Sinh dữ liệu Benchmark chuẩn** | `src/utils/benchmark_generator.py` | **TV4 / TV5** | **Đã hoàn thành** (Có sẵn `benchmark_10.json`, `50.json`, `100.json` trong `data/raw/`) |
-| 8 | **A* Tối ưu + Ma trận khoảng cách** | `src/models/optimized_astar.py`, `src/utils/distance_matrix.py` | **TV2** | Đang thực hiện (Tạm dùng A* baseline trong pipeline) |
+| 7 | **A* Tối ưu + Ma trận khoảng cách** | `src/models/optimized_astar.py`, `src/utils/distance_matrix.py` | **TV2 (lynseyngoc)** | **Đã hoàn thành 100%** (A* Octile, Bresenham Line-of-sight, Smooth path, MD5 Cache - Đã review & merge PR #6) |
+| 8 | **Sinh dữ liệu Benchmark chuẩn** | `src/utils/benchmark_generator.py` | **TV4 / TV5** | **Đã hoàn thành** (Có sẵn `benchmark_10.json`, `50.json`, `100.json` trong `data/raw/`) |
 | 9 | **Ràng buộc Pin & Trạm sạc** | `src/algorithms/energy_manager.py` | **TV3** | Đang thực hiện (Sẵn sàng kết nối qua interface `calculate_route_energy`) |
-| 10 | **Thuật toán Baseline Greedy & 2-Opt** | `src/algorithms/baseline_greedy.py`, `src/algorithms/local_search.py` | **TV6** | Đang thực hiện (Đã có sẵn Greedy baseline trong pipeline) |
+| 10 | **Thuật toán Baseline Greedy & 2-Opt** | `src/algorithms/baseline_greedy.py`, `src/algorithms/local_search.py` | **TV6** | Đang thực hiện (Đã có sẵn Greedy baseline tích hợp trong pipeline) |
+
+---
+
+## 🏆 Đánh giá Tiến độ Chung của Dự án
+- **Tỷ lệ hoàn thành khối lượng công việc Tuần 3 & Tuần 4:** **~85%** (Vượt tiến độ so với kế hoạch ban đầu).
+- **Các thành phần cốt lõi đã chạy mượt mà End-to-End:** 
+  1. Bản đồ lưới 2D né vùng cấm bay với A* tối ưu (Octile + Bresenham Line-of-sight).
+  2. Ma trận khoảng cách tính toán tức thời nhờ bộ nhớ đệm Cache `.pkl`.
+  3. Giải thuật Di truyền (GA) phân bổ đơn hàng cho đội bay UAV, giảm hơn **14% quãng đường** so với Baseline.
+  4. Trực quan hóa bản đồ đa UAV nhiều màu sắc, biểu đồ hội tụ, biểu đồ cột so sánh và phân tích khả năng mở rộng quy mô.
+- **2 hạng mục cuối đang chờ tích hợp:** Logic quản lý pin/trạm sạc (TV3) và giải thuật 2-Opt tối ưu cục bộ (TV6).
 
 ---
 
