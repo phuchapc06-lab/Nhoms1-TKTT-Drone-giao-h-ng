@@ -5,6 +5,7 @@ Phụ trách: Thành viên 5 (Nguyễn Phúc Hà - Tech Lead & System Integrator
 import argparse
 import sys
 import os
+import math
 
 # Đảm bảo console Windows in tiếng Việt UTF-8 không lỗi
 if hasattr(sys.stdout, 'reconfigure'):
@@ -62,8 +63,20 @@ def parse_args():
     parser.add_argument(
         "--drones",
         type=int,
-        default=3,
-        help="Số lượng UAV khả dụng trong đội bay"
+        default=None,
+        help="Số lượng UAV khả dụng trong đội bay (mặc định: tự động tính theo tổng tải trọng)"
+    )
+    parser.add_argument(
+        "--generations",
+        type=int,
+        default=None,
+        help="Số lượng thế hệ tiến hóa của GA (mặc định: tự động tối ưu theo quy mô)"
+    )
+    parser.add_argument(
+        "--pop-size",
+        type=int,
+        default=None,
+        help="Kích thước quần thể của GA (mặc định: tự động tối ưu theo quy mô)"
     )
     return parser.parse_args()
 
@@ -93,7 +106,7 @@ def main():
     # 1. Khởi tạo Pipeline tích hợp
     pipeline = UAVRoutingPipeline(
         grid_size=(60, 60),
-        num_drones=args.drones,
+        num_drones=3,
         drone_capacity=5.0,
         drone_speed=10.0,
         seed=args.seed
@@ -111,23 +124,41 @@ def main():
         print(f"[*] Đang khởi tạo kịch bản thử nghiệm với {n_cust} điểm giao hàng...")
         pipeline.generate_synthetic_data(num_delivery=n_cust, num_charging=3, num_no_fly=6)
 
-    # 3. Tính toán ma trận khoảng cách né vật cản A*
+    # 3. Phân bổ số lượng UAV linh hoạt theo tổng tải trọng nếu người dùng không chỉ định
+    total_demand = sum(node.get("demand", 0.0) for node in pipeline.nodes.values() if node.get("type") == "delivery")
+    min_drones = max(3, int(math.ceil(total_demand / pipeline.drone_capacity * 1.2)))
+    if args.drones is not None:
+        pipeline.num_drones = args.drones
+    else:
+        pipeline.num_drones = min_drones
+
+    num_deliveries = len([k for k, v in pipeline.nodes.items() if v.get("type") == "delivery"])
+    print(f"[*] Quy mô: {num_deliveries} điểm giao hàng, Tổng tải: {total_demand:.2f}kg -> Bố trí đội bay: {pipeline.num_drones} UAVs.")
+
+    # 4. Tính toán ma trận khoảng cách né vật cản A*
     print("[*] Đang tính toán ma trận khoảng cách né vùng cấm bay (A* Engine)...")
     pipeline.compute_distance_matrix(use_astar=True)
 
-    # 4. Thực thi thuật toán
+    # 5. Thực thi thuật toán
     show_gui = not args.no_plot
 
     if args.compare:
         # Chế độ so sánh đối sánh
-        pipeline.compare_algorithms(save_dir=args.save_dir, show_plot=show_gui)
+        pipeline.compare_algorithms(
+            save_dir=args.save_dir,
+            show_plot=show_gui,
+            generations=args.generations,
+            pop_size=args.pop_size
+        )
     else:
         # Chạy 1 thuật toán đơn lẻ
         print(f"[*] Đang chạy thuật toán: {args.algorithm.upper()}...")
         result = pipeline.run_experiment(
             algorithm=args.algorithm,
             save_figure_dir=args.save_dir,
-            show_plot=show_gui
+            show_plot=show_gui,
+            generations=args.generations,
+            pop_size=args.pop_size
         )
         print("\n--- KẾT QUẢ THỰC THI ---")
         print(f"Thuật toán:             {result['algorithm']}")

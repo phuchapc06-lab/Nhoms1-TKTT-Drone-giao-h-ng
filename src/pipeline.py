@@ -260,22 +260,37 @@ class UAVRoutingPipeline:
 
         return solution
 
-    def solve_ga(self, generations: int = 80, pop_size: int = 60) -> Tuple[List[List[int]], List[float]]:
+    def solve_ga(
+        self,
+        generations: Optional[int] = None,
+        pop_size: Optional[int] = None,
+        seed_greedy: bool = True
+    ) -> Tuple[List[List[int]], List[float]]:
         """
         Tích hợp giải thuật Di truyền GA chính thức của Thành viên 1 (GA Core Engine).
-        Có cơ chế dự phòng (fallback) tự động.
+        Hỗ trợ:
+        - Khởi tạo từ lời giải Greedy (Seeding) để đảm bảo GA luôn tốt hơn hoặc bằng Greedy.
+        - Tích hợp EnergyManager để GA chấm điểm sau khi chèn trạm sạc.
+        - Tự động fallback nếu có lỗi.
         """
         try:
             from algorithms.genetic_algorithm import GeneticAlgorithm
-            ga = GeneticAlgorithm(
-                nodes=self.nodes,
-                dist_matrix=self.dist_matrix,
-                num_drones=self.num_drones,
-                fitness_calc=self.fitness_calc,
-                pop_size=pop_size,
-                generations=generations,
-                seed=self.seed
-            )
+            initial_solutions = [self.solve_greedy()] if seed_greedy else None
+            ga_kwargs: Dict[str, Any] = {
+                "nodes": self.nodes,
+                "dist_matrix": self.dist_matrix,
+                "num_drones": self.num_drones,
+                "fitness_calc": self.fitness_calc,
+                "energy_manager": self.energy_manager,
+                "seed": self.seed,
+                "initial_solutions": initial_solutions
+            }
+            if pop_size is not None:
+                ga_kwargs["pop_size"] = pop_size
+            if generations is not None:
+                ga_kwargs["generations"] = generations
+
+            ga = GeneticAlgorithm(**ga_kwargs)
             solution, best_fitness, history_fitness = ga.evolve()
             # Bổ sung tuyến trống nếu số lượng UAV sử dụng ít hơn num_drones
             while len(solution) < self.num_drones:
@@ -377,7 +392,10 @@ class UAVRoutingPipeline:
         self,
         algorithm: str = "ga",
         save_figure_dir: Optional[str] = "docs/figures",
-        show_plot: bool = False
+        show_plot: bool = False,
+        generations: Optional[int] = None,
+        pop_size: Optional[int] = None,
+        seed_greedy: bool = True
     ) -> Dict[str, Any]:
         """
         Chay toan trinh mot thuat toan, danh gia va xuat ket qua.
@@ -389,7 +407,11 @@ class UAVRoutingPipeline:
         history_fitness = None
 
         if algorithm.lower() == "ga":
-            solution, history_fitness = self.solve_ga(generations=80, pop_size=50)
+            solution, history_fitness = self.solve_ga(
+                generations=generations,
+                pop_size=pop_size,
+                seed_greedy=seed_greedy
+            )
             algo_name = "Thuật toán Di truyền (A* + Genetic Algorithm)"
         elif algorithm.lower() == "greedy":
             solution = self.solve_greedy()
@@ -449,16 +471,24 @@ class UAVRoutingPipeline:
 
             if history_fitness:
                 conv_path = os.path.join(save_figure_dir, f"convergence_{algorithm.lower()}.png")
+                num_deliv = len([k for k, v in self.nodes.items() if v.get("type") == "delivery"])
                 self.visualizer.plot_convergence_curve(
                     history_fitness=history_fitness,
-                    title=f"Đường cong Hội tụ GA ({len(self.nodes)-1} điểm)",
+                    title=f"Đường cong Hội tụ GA ({num_deliv} điểm giao hàng)",
                     save_path=conv_path,
                     show=show_plot
                 )
 
         return res
 
-    def compare_algorithms(self, save_dir: Optional[str] = "docs/figures", show_plot: bool = False):
+    def compare_algorithms(
+        self,
+        save_dir: Optional[str] = "docs/figures",
+        show_plot: bool = False,
+        generations: Optional[int] = None,
+        pop_size: Optional[int] = None,
+        seed_greedy: bool = True
+    ):
         """
         Chay so sanh truc tiep giua A* + GA va A* + Greedy Baseline.
         In bang Markdown so sanh chuyen nghiep.
@@ -468,7 +498,14 @@ class UAVRoutingPipeline:
         print("=======================================================")
 
         res_greedy = self.run_experiment(algorithm="greedy", save_figure_dir=save_dir, show_plot=False)
-        res_ga = self.run_experiment(algorithm="ga", save_figure_dir=save_dir, show_plot=show_plot)
+        res_ga = self.run_experiment(
+            algorithm="ga",
+            save_figure_dir=save_dir,
+            show_plot=show_plot,
+            generations=generations,
+            pop_size=pop_size,
+            seed_greedy=seed_greedy
+        )
 
         # In bang so sanh
         dist_diff = ((res_greedy["distance"] - res_ga["distance"]) / res_greedy["distance"]) * 100

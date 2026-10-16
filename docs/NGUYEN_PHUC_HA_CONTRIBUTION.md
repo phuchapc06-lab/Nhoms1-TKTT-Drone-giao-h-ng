@@ -112,26 +112,42 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ---
 
-### 11. Kiểm thử Tự động Toàn diện (Unit Testing & Validation)
-- **Danh mục file test:**
-  - `tests/test_member5.py`: Kiểm thử độc lập Fitness & Visualizer.
-  - `tests/test_day2_pipeline.py`: Kiểm thử Pipeline tích hợp E2E & Validator.
-  - `tests/test_day3_evaluator.py`: Kiểm thử BenchmarkEvaluator, Bar Charts, Scalability & xuất file báo cáo.
-  - `tests/test_day4_integration.py`: Kiểm thử Cột mốc tích hợp Ngày 4 (EnergyManager, 2-Opt, GreedyRouter, Pipeline End-to-End).
+### 11. Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 (Advanced GA Tuning & Dynamic Scaling)
+- **Files liên quan:**
+  - `src/pipeline.py` (Hỗ trợ Hybrid GA Seeding, EnergyManager in-loop evaluate)
+  - `src/main.py` (Cơ chế tự động phân bổ số Drone thích ứng theo tải trọng)
+  - Review & Merge PR #7 của TV1 (`feature/tv1-ga-tuning`)
+- **Nội dung thực hiện:**
+  - **Review & Kiểm định PR #7:** Rà soát mã nguồn, xác nhận TV1 đã tinh chỉnh siêu tham số GA (`pop_size=100, generations=2000, mutation_rate=0.5`), bổ sung `initial_solutions` và phát hiện/vá lỗi lặp vô hạn nghiêm trọng tại trạm sạc trong `repair_route_with_charging`.
+  - **Cơ chế Hybrid GA (Greedy Seeding):** Tích hợp đưa nghiệm của `GreedyRouter` vào quần thể khởi tạo của GA trong `pipeline.py`. Kết hợp cùng cơ chế Elitism, GA đảm bảo 100% không bao giờ sinh ra nghiệm kém hơn Greedy ở mọi quy mô.
+  - **Tự động mở rộng Đội bay thích ứng (Dynamic Fleet Sizing):** Cập nhật `main.py` tự động tính toán số Drone tối thiểu cần thiết theo tổng khối lượng hàng hóa của kịch bản ($\lceil \text{TotalDemand} / Q_{max} \cdot 1.2 \rceil$), giải quyết triệt để vấn đề quá tải cấu trúc ở các quy mô 50 và 100 điểm.
+  - **Sửa lỗi trực quan hóa:** Chuẩn hóa tiêu đề biểu đồ hội tụ GA chỉ đếm số điểm giao hàng thực tế (loại bỏ trạm sạc).
+
+---
+
+### 12. Kiểm thử Tự động Toàn diện (Unit Testing & Validation)
+- **Danh mục 7 file test độc lập:**
+  - `tests/test_distance_matrix.py`: Kiểm thử A* tối ưu, tính đối xứng và MD5 Cache (TV2).
+  - `tests/test_ga.py`: Kiểm thử GA Core, toán tử OX, Swap, Tuning và Seeding (TV1).
+  - `tests/test_member5.py`: Kiểm thử độc lập Fitness & Visualizer (TV5).
+  - `tests/test_day2_pipeline.py`: Kiểm thử Pipeline tích hợp E2E & Validator (TV5).
+  - `tests/test_day3_evaluator.py`: Kiểm thử BenchmarkEvaluator, Bar Charts & Scalability (TV5).
+  - `tests/test_day4_integration.py`: Kiểm thử Cột mốc tích hợp Hệ thống Ngày 4 (TV5).
+  - `tests/test_day5_integration.py`: Kiểm thử Cột mốc Tinh chỉnh & Tối ưu Nâng cao Ngày 5 (TV5).
 - **Kết quả kiểm thử:** **100% Passed**.
 
 ---
 
 ## 📂 DANH MỤC CÁC FILE ĐÃ TẠO VÀ ĐÓNG GÓP
 | STT | Tên File | Chức năng | Trạng thái |
-| :---: | :--- | :--- | :---: |
+| :---: | :--- | :--- | :--- | :---: |
 | 1 | `src/algorithms/fitness.py` | Lập trình Hàm mục tiêu đa ràng buộc & Fitness function cho GA | Hoàn thành |
 | 2 | `src/utils/visualizer.py` | Lập trình trực quan hóa bản đồ đa UAV, biểu đồ hội tụ, biểu đồ cột & scalability | Hoàn thành |
 | 3 | `src/utils/validator.py` | Bộ kiểm định chuẩn Data Contract và tính hợp lệ của Solution | Hoàn thành |
-| 4 | `src/pipeline.py` | Khung điều phối tích hợp hệ thống End-to-End và đối sánh thuật toán | Hoàn thành |
+| 4 | `src/pipeline.py` | Khung điều phối tích hợp hệ thống End-to-End, Hybrid GA & đối sánh | Hoàn thành |
 | 5 | `src/utils/benchmark_evaluator.py` | Module đo đạc chỉ số khoa học, đối sánh đa quy mô và xuất báo cáo | Hoàn thành |
 | 6 | `src/utils/benchmark_generator.py` | Trình sinh các bộ dữ liệu thử nghiệm chuẩn 10, 50, 100 điểm vào `data/raw/` | Hoàn thành |
-| 7 | `src/main.py` | Giao diện điều khiển chính của chương trình qua dòng lệnh CLI | Hoàn thành |
+| 7 | `src/main.py` | Giao diện điều khiển chính của chương trình qua CLI, tự động tính số Drone | Hoàn thành |
 | 8 | `src/algorithms/energy_manager.py` | Module quản lý pin, tiêu hao tải trọng và tự động chèn trạm sạc | Hoàn thành |
 | 9 | `src/algorithms/local_search.py` | Module tối ưu cục bộ 2-Opt gỡ giao cắt đường bay đa UAV | Hoàn thành |
 | 10 | `src/algorithms/baseline_greedy.py` | Module thuật toán tham lam Nearest Neighbor định tuyến đối sánh | Hoàn thành |
@@ -139,6 +155,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 | 12 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
 | 13 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
 | 14 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
-| 15 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
-| 16 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+| 15 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
+| 16 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
+| 17 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
 
