@@ -125,7 +125,31 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ---
 
-### 12. Kiểm thử Tự động Toàn diện (Unit Testing & Validation)
+### 12. Cột mốc Nghiệm thu Toàn dự án & Tổng kết Sprint 1 Tuần (Chủ Nhật - 18/10/2026)
+- **Files liên quan:**
+  - `README.md` (Tài liệu tổng quan dự án toàn diện, kiến trúc hệ thống, hướng dẫn chạy CLI)
+  - `TIEN_DO.md` (Báo cáo tiến độ hoàn thành 100% Sprint 1 tuần của nhóm)
+  - `docs/EXPERIMENT_RESULTS.md` (Báo cáo thực nghiệm đối sánh đa quy mô hoàn chỉnh)
+  - `data/raw/benchmark_500.json` (Bộ dữ liệu quy mô siêu lớn 500 khách hàng)
+  - `src/utils/benchmark_evaluator.py` (Mở rộng đánh giá tự động đa quy mô, tích hợp sửa đường bay trạm sạc & tối ưu 2-Opt)
+  - Review & Merge hoàn tất đóng góp từ nhánh `origin/feature/tv1-contribution`
+- **Nội dung thực hiện:**
+  - **Nghiệm thu thực nghiệm đối sánh đa quy mô tự động (Multi-scale Benchmark Consolidation):**
+    - Hoàn thiện và chạy nghiệm thu chuỗi kịch bản đánh giá quy mô đa dạng: 10, 20, 30, 50, 100 và mở rộng 500 điểm (`python src/main.py --evaluate-all`).
+    - Nâng cấp `benchmark_evaluator.py` để quy trình đối sánh chạy liên hoàn với đầy đủ cơ chế tối ưu cục bộ 2-Opt và tự động chèn trạm sạc bảo vệ pin cho cả GA và Greedy Router.
+    - Cập nhật tự động bảng tổng hợp chỉ số định lượng `data/processed/benchmark_comparison_results.csv`, biểu đồ trực quan hóa so sánh cột `docs/figures/comparison_bars.png` và biểu đồ phân tích khả năng mở rộng `docs/figures/scalability_analysis.png`.
+  - **Hợp nhất mã nguồn và đồng bộ đóng góp toàn nhóm:**
+    - Rà soát và fast-forward merge thành công nhánh `feature/tv1-contribution` (tài liệu `TV1_CONTRIBUTION.md`, chuẩn hóa docstrings toán tử di truyền GA và vá siêu tham số `ga_tuning.py`).
+    - Đồng bộ bộ dữ liệu kịch bản siêu lớn 500 điểm `data/raw/benchmark_500.json` từ nhánh `feature/tv4-benchmark-data` vào hệ thống, đảm bảo tuân thủ 100% Data Contract của dự án.
+  - **Đại tu và hoàn thiện tài liệu dự án chuẩn mực (`README.md`):**
+    - Viết lại toàn bộ `README.md` theo chuẩn tài liệu nghiên cứu chuyên nghiệp: Sơ đồ kiến trúc luồng dữ liệu (Mermaid Flowchart), bảng phân công trách nhiệm 6 thành viên, cơ sở lý thuyết toán học (Haversine + NFZ A*, GA Chromosome + OX + Swap, Energy Non-linear + Charging Repair, 2-Opt Local Search), bảng kết quả thực nghiệm tổng hợp và hướng dẫn chi tiết toàn bộ các cờ lệnh CLI.
+  - **Đóng gói và bảo đảm chất lượng tổng thể (Quality Assurance & Audit):**
+    - Kiểm thử tự động hồi quy 7/7 test suites độc lập, xác nhận toàn bộ hệ sinh thái phần mềm hoạt động trơn tru 100% không phát sinh lỗi.
+    - Đóng gói nghiệm thu toàn bộ Sprint 1 Tuần, đồng bộ toàn diện trên 3 nhánh `nguyen-phuc-ha`, `develop`, và `main`.
+
+---
+
+### 13. Kiểm thử Tự động Toàn diện (Unit Testing & Validation)
 - **Danh mục 7 file test độc lập:**
   - `tests/test_distance_matrix.py`: Kiểm thử A* tối ưu, tính đối xứng và MD5 Cache (TV2).
   - `tests/test_ga.py`: Kiểm thử GA Core, toán tử OX, Swap, Tuning và Seeding (TV1).
@@ -156,6 +180,8 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 | 13 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
 | 14 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
 | 15 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
-| 16 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
-| 17 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+| 16 | `README.md` | Tài liệu dự án hoàn chỉnh, kiến trúc, phân công nhóm, kết quả thực nghiệm | Hoàn thành |
+| 17 | `TIEN_DO.md` | Tài liệu quản lý tiến độ và nghiệm thu toàn dự án Sprint 1 tuần | Hoàn thành |
+| 18 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
+| 19 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
 

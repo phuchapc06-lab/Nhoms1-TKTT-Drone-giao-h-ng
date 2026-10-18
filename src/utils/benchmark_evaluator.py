@@ -15,6 +15,10 @@ from typing import Dict, List, Tuple, Any, Optional
 import numpy as np
 import pandas as pd
 
+# Đảm bảo console Windows in tiếng Việt UTF-8 không lỗi
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 # Đảm bảo đường dẫn import
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -78,14 +82,44 @@ class BenchmarkEvaluator:
         # 1. Chạy Greedy Baseline
         t0 = time.time()
         sol_greedy = pipeline.solve_greedy()
+        try:
+            from algorithms.local_search import apply_2opt_to_solution
+            sol_greedy = apply_2opt_to_solution(sol_greedy, pipeline.dist_matrix)
+        except Exception:
+            pass
+        if pipeline.energy_manager:
+            repaired_g = []
+            for r in sol_greedy:
+                rep_r, _, _ = pipeline.energy_manager.repair_route_with_charging(
+                    r, pipeline.dist_matrix, pipeline.nodes
+                )
+                repaired_g.append(rep_r)
+            sol_greedy = repaired_g
         t_greedy = time.time() - t0
-        fit_g, cost_g, bd_g = pipeline.fitness_calc.evaluate_solution(sol_greedy, pipeline.dist_matrix, pipeline.nodes)
+        fit_g, cost_g, bd_g = pipeline.fitness_calc.evaluate_solution(
+            sol_greedy, pipeline.dist_matrix, pipeline.nodes, pipeline.energy_manager
+        )
 
         # 2. Chạy Genetic Algorithm (Đề xuất)
         t1 = time.time()
         sol_ga, hist_ga = pipeline.solve_ga(generations=ga_generations, pop_size=ga_pop_size)
+        try:
+            from algorithms.local_search import apply_2opt_to_solution
+            sol_ga = apply_2opt_to_solution(sol_ga, pipeline.dist_matrix)
+        except Exception:
+            pass
+        if pipeline.energy_manager:
+            repaired_ga = []
+            for r in sol_ga:
+                rep_r, _, _ = pipeline.energy_manager.repair_route_with_charging(
+                    r, pipeline.dist_matrix, pipeline.nodes
+                )
+                repaired_ga.append(rep_r)
+            sol_ga = repaired_ga
         t_ga = time.time() - t1
-        fit_ga, cost_ga, bd_ga = pipeline.fitness_calc.evaluate_solution(sol_ga, pipeline.dist_matrix, pipeline.nodes)
+        fit_ga, cost_ga, bd_ga = pipeline.fitness_calc.evaluate_solution(
+            sol_ga, pipeline.dist_matrix, pipeline.nodes, pipeline.energy_manager
+        )
 
         # 3. Tính toán các tỷ lệ cải thiện (%)
         dist_saved = ((bd_g["distance"] - bd_ga["distance"]) / bd_g["distance"]) * 100.0 if bd_g["distance"] > 0 else 0.0
