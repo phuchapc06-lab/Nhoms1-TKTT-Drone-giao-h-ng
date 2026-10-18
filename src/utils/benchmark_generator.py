@@ -99,10 +99,23 @@ def load_benchmark(file_path):
 
 
 if __name__ == "__main__":
-    # Công việc Ngày 2: xuất file dữ liệu mẫu benchmark_10.json
-    generate_benchmark(
-        num_customers=10,
-        num_charging=2,
-        num_nofly=2,
-        output_path="data/raw/benchmark_10.json"
-    )
+    #4 bộ dữ liệu đa quy mô chuẩn
+    configs = [
+        (10, 2, 2, "data/raw/benchmark_10.json"),
+        (50, 5, 4, "data/raw/benchmark_50.json"),
+        (100, 10, 6, "data/raw/benchmark_100.json"),
+        (500, 25, 10, "data/raw/benchmark_500.json"),
+    ]
+
+    for n_cust, n_chg, n_nfz, path in configs:
+        generate_benchmark(
+            num_customers=n_cust,
+            num_charging=n_chg,
+            num_nofly=n_nfz,
+            output_path=path
+        )
+
+    # Kiểm tra đọc thử bộ 100 điểm
+    du_lieu_100 = load_benchmark("data/raw/benchmark_100.json")
+    print(
+        f"Kiểm tra bộ 100 điểm: Tổng số node = {len(du_lieu_100['nodes'])}, Vùng cấm bay = {len(du_lieu_100['no_fly_zones'])}")
