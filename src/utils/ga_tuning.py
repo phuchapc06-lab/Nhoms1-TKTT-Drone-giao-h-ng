@@ -140,7 +140,7 @@ def run_ga(
     GA qua đúng luồng run_experiment của pipeline (GA -> 2-Opt -> chèn trạm sạc -> chấm điểm có EnergyManager).
     Thời gian đo bởi run_experiment gồm cả bước chạy Greedy để khởi tạo (nếu seed_greedy).
     """
-    def solve_ga(generations, pop_size):  # thay cấu hình cố định bên trong run_experiment
+    def solve_ga(*_args, **_kwargs):  # bỏ qua tham số run_experiment truyền vào: cấu hình lấy từ ga_params
         ga = GeneticAlgorithm(
             pipeline.nodes, pipeline.dist_matrix, pipeline.num_drones,
             fitness_calc=pipeline.fitness_calc,
