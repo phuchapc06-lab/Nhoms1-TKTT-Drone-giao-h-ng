@@ -175,6 +175,10 @@ def compare(pipeline: UAVRoutingPipeline, seeds: List[int], ga_params: Dict[str,
 
 
 def format_compare(variants: Dict[str, List[Dict[str, Any]]]) -> str:
+    """
+    Bảng Markdown so sánh các biến thể (trung bình ± độ lệch chuẩn qua các seed),
+    kèm % chênh lệch tổng chi phí so với Greedy (biến thể đầu tiên trong variants).
+    """
     def stat(results, key, digits=2):
         values = [r[key] for r in results]
         if len(values) == 1:
@@ -203,6 +207,7 @@ def format_compare(variants: Dict[str, List[Dict[str, Any]]]) -> str:
 
 
 def main():
+    """Dòng lệnh: `sweep` (quét tham số) hoặc `compare` (so sánh với Greedy); in kết quả dạng Markdown."""
     parser = argparse.ArgumentParser(description="Thực nghiệm tinh chỉnh tham số GA (TV1)")
     sub = parser.add_subparsers(dest="command", required=True)
 

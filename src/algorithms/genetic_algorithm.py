@@ -37,6 +37,22 @@ class GeneticAlgorithm:
         initial_solutions: Optional[List[List[List[int]]]] = None,
         constraint_penalty_factor: float = 100.0
     ):
+        """
+        Khởi tạo GA cho đội bay K Drone.
+            nodes: các node theo Data Contract; chỉ node type == "delivery" được đưa vào chromosome.
+            dist_matrix: ma trận khoảng cách né vùng cấm bay (TV2).
+            num_drones: số Drone K = số tuyến tối đa; chromosome có K-1 vách ngăn.
+            fitness_calc: FitnessCalculator của TV5 (None -> tạo bản mặc định).
+            energy_manager: EnergyManager của TV3; nếu có, tuyến được chấm điểm sau khi chèn trạm sạc.
+            pop_size, generations: kích thước quần thể và số thế hệ.
+            crossover_rate, mutation_rate: xác suất lai ghép OX và đột biến Swap.
+            tournament_size: số cá thể mỗi lần chọn lọc Tournament.
+            elitism: số cá thể tốt nhất được giữ nguyên sang thế hệ sau.
+            seed: seed của bộ sinh số ngẫu nhiên riêng (cùng seed -> cùng kết quả).
+            initial_solutions: lời giải có sẵn (vd. Greedy của TV6) đưa vào quần thể ban đầu.
+            constraint_penalty_factor: hệ số nhân phần phạt quá tải / cạn pin khi chọn lọc (1 -> fitness gốc của TV5).
+        Báo ValueError nếu tham số không hợp lệ hoặc không có điểm giao hàng nào.
+        """
         if num_drones < 1:
             raise ValueError("num_drones phải >= 1")
         if pop_size < 2:
@@ -181,6 +197,7 @@ class GeneticAlgorithm:
         return self._cache[key]
 
     def _fitness(self, chromosome: Chromosome) -> float:
+        """Fitness dùng để chọn lọc (đã nhân hệ số phạt vi phạm), xem _evaluate."""
         return self._evaluate(chromosome)[0]
 
     # ------------------------------------------------------------------
