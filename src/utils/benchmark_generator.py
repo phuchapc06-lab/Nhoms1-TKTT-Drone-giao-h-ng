@@ -53,9 +53,11 @@ class BenchmarkGenerator:
             }
         }
 
-        # 2. Vùng cấm bay No-fly zones (x, y, w, h)
+        # 2. Vùng cấm bay No-fly zones (x, y, w, h) - đảm bảo sinh đủ num_no_fly vùng không đè lên Depot
         no_fly_zones = []
-        for idx in range(num_no_fly):
+        nfz_attempts = 0
+        while len(no_fly_zones) < num_no_fly and nfz_attempts < num_no_fly * 300:
+            nfz_attempts += 1
             zw = int(np.random.randint(5, 12))
             zh = int(np.random.randint(5, 12))
             zx = int(np.random.randint(2, max(3, w - zw - 2)))
@@ -74,7 +76,9 @@ class BenchmarkGenerator:
         curr_id = 1
         low_d = 0.8 if num_delivery <= 10 else 1.0
         high_d = 1.3 if num_delivery <= 10 else 1.5
-        while curr_id <= num_delivery:
+        cust_attempts = 0
+        while curr_id <= num_delivery and cust_attempts < num_delivery * 300:
+            cust_attempts += 1
             px = int(np.random.randint(2, max(3, w - 2)))
             py = int(np.random.randint(2, max(3, h - 2)))
             if not in_nfz(px, py) and (px, py) != depot_pos:
@@ -93,7 +97,9 @@ class BenchmarkGenerator:
 
         # 4. Trạm sạc (id = N+1..)
         cs_count = 0
-        while cs_count < num_charging:
+        cs_attempts = 0
+        while cs_count < num_charging and cs_attempts < num_charging * 300:
+            cs_attempts += 1
             px = int(np.random.randint(5, max(6, w - 5)))
             py = int(np.random.randint(5, max(6, h - 5)))
             if not in_nfz(px, py) and (px, py) != depot_pos:
@@ -168,6 +174,10 @@ def load_benchmark(file_path: str) -> Dict[str, Any]:
         for node in raw_nodes:
             node["pos"] = tuple(node.get("pos", (0, 0)))
             node["tw"] = tuple(node.get("tw", (0, 1000)))
+
+    # Đảm bảo các thuộc tính đếm số lượng luôn chính xác
+    data["num_customers"] = len([n for n in data["nodes"] if n.get("type") == "delivery"])
+    data["num_charging"] = len([n for n in data["nodes"] if n.get("type") == "charging"])
 
     # Chuẩn hóa no_fly_zones
     zones = []

@@ -1,0 +1,4 @@
+scale_n,drones_k,greedy_dist,ga_dist,dist_saved_pct,greedy_energy,ga_energy,energy_saved_pct,greedy_cost,ga_cost,cost_saved_pct,greedy_time_s,ga_time_s
+10,3,377.25,296.41,21.43,446.04,391.56,12.21,1077.13,883.75,17.95,0.0012,0.4596
+20,6,517.0,448.03,13.34,626.27,565.01,9.78,1475.81,1314.95,10.9,0.0006,1.0947
+30,9,695.47,635.83,8.58,881.3,811.84,7.88,2065.7,1892.47,8.39,0.0015,2.3218

@@ -26,11 +26,13 @@ venv.bak/
 *.swo
 
 # 4. Thư mục chứa dữ liệu và Logs
-# Bỏ qua các file dữ liệu lớn sinh ra trong quá trình chạy, nhưng vẫn giữ lại cấu trúc thư mục thông qua file .gitkeep
+# Bỏ qua các file dữ liệu lớn sinh ra trong quá trình chạy, nhưng giữ lại các file benchmark chuẩn
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/benchmark_*.json
 data/processed/*
 !data/processed/.gitkeep
+!data/processed/*.csv
 
 logs/
 *.log
