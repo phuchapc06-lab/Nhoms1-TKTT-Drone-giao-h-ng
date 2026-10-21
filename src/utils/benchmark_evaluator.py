@@ -138,6 +138,8 @@ class BenchmarkEvaluator:
             "greedy_cost": round(cost_g, 2),
             "ga_cost": round(cost_ga, 2),
             "cost_saved_pct": round(cost_saved, 2),
+            "greedy_ontime_rate": round(float(bd_g.get("on_time_rate", 100.0)), 2),
+            "ga_ontime_rate": round(float(bd_ga.get("on_time_rate", 100.0)), 2),
             "greedy_time_s": round(t_greedy, 4),
             "ga_time_s": round(t_ga, 4)
         }
@@ -221,20 +223,24 @@ class BenchmarkEvaluator:
             f.write("**Phụ trách thực nghiệm:** Nguyễn Phúc Hà (Tech Lead - Thành viên 5)\n\n")
 
             f.write("### 1. Bảng số liệu tổng hợp đa quy mô (Multi-scale Experimental Results)\n\n")
-            f.write("| Quy mô (N) | Số Drone (K) | Quãng đường Greedy (km) | Quãng đường GA (km) | Tiết kiệm Quãng đường (%) | Tiết kiệm Năng lượng (%) | Tiết kiệm Chi phí (%) | Thời gian Greedy (s) | Thời gian GA (s) |\n")
-            f.write("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n")
+            f.write("| Quy mô (N) | Số Drone (K) | Quãng đường Greedy (km) | Quãng đường GA (km) | Tiết kiệm Quãng đường (%) | Tiết kiệm Năng lượng (%) | Đúng giờ Greedy (%) | Đúng giờ GA (%) | Tiết kiệm Chi phí (%) | Thời gian Greedy (s) | Thời gian GA (s) |\n")
+            f.write("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n")
 
             for _, row in df.iterrows():
                 f.write(
                     f"| {int(row['scale_n'])} | {int(row['drones_k'])} "
                     f"| {row['greedy_dist']:.2f} | {row['ga_dist']:.2f} "
-                    f"| **{row['dist_saved_pct']:.2f}%** | **{row['energy_saved_pct']:.2f}%** | **{row['cost_saved_pct']:.2f}%** "
+                    f"| **{row['dist_saved_pct']:.2f}%** | **{row['energy_saved_pct']:.2f}%** "
+                    f"| {row.get('greedy_ontime_rate', 100.0):.1f}% | {row.get('ga_ontime_rate', 100.0):.1f}% "
+                    f"| **{row['cost_saved_pct']:.2f}%** "
                     f"| {row['greedy_time_s']:.4f} | {row['ga_time_s']:.4f} |\n"
                 )
 
             f.write("\n### 2. Nhận xét & Đánh giá Khoa học\n")
             avg_dist_saved = df["dist_saved_pct"].mean()
             avg_energy_saved = df["energy_saved_pct"].mean()
+            avg_ga_ontime = df["ga_ontime_rate"].mean() if "ga_ontime_rate" in df else 100.0
             f.write(f"- **Mức độ tối ưu quãng đường:** Giải thuật Di truyền đề xuất ($A^* + GA$) giúp rút ngắn trung bình **{avg_dist_saved:.2f}%** quãng đường bay so với Baseline Tham lam ($A^* + Greedy$).\n")
             f.write(f"- **Hiệu quả sử dụng năng lượng pin:** Nhờ tối ưu thứ tự giao hàng và tải trọng, mức tiêu thụ pin giảm trung bình **{avg_energy_saved:.2f}%**, hạn chế đáng kể số lần UAV phải ghé trạm sạc.\n")
+            f.write(f"- **Tỷ lệ giao hàng đúng giờ (Time Windows):** Thuật toán GA đạt tỷ lệ giao đúng hẹn trung bình **{avg_ga_ontime:.1f}%**, giảm thiểu các khoản phạt vi phạm khung giờ giao hàng của khách hàng.\n")
             f.write(f"- **Thời gian tính toán & Khả năng mở rộng:** Mặc dù thuật toán GA có thời gian tính toán lớn hơn Greedy, toàn bộ thời gian thực thi vẫn nằm trong ngưỡng vài giây (real-time planning), đáp ứng hoàn hảo yêu cầu vận hành đô thị thông minh.\n")

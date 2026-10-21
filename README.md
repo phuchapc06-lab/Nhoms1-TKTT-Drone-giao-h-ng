@@ -111,20 +111,23 @@ python src/main.py --benchmark 10 --compare
 # 2. Chế độ chạy nhanh không bật popup cửa sổ đồ thị (Batch run)
 python src/main.py --benchmark 10 --compare --no-plot
 
-# 3. Thử nghiệm trên quy mô trung bình (50 điểm giao hàng, tự động tính số UAV)
+# 3. Chạy với chế độ tính toán song song đa luồng (Parallel Computing) & đo hệ số tăng tốc Speedup
+python src/main.py --benchmark 50 --compare --parallel --speedup --no-plot
+
+# 4. Thử nghiệm trên quy mô trung bình (50 điểm giao hàng, tự động tính số UAV)
 python src/main.py --benchmark 50 --compare --no-plot
 
-# 4. Thử nghiệm quy mô lớn 100 và 500 điểm
-python src/main.py --benchmark 100 --algorithm ga --no-plot
+# 5. Thử nghiệm quy mô lớn 100 và 500 điểm
+python src/main.py --benchmark 100 --algorithm ga --parallel --no-plot
 python src/main.py --benchmark 500 --algorithm greedy --no-plot
 
-# 5. Tự động chạy Suite thực nghiệm đa quy mô và cập nhật báo cáo khoa học
+# 6. Tự động chạy Suite thực nghiệm đa quy mô và cập nhật báo cáo khoa học
 python src/main.py --evaluate-all
 ```
 
-### 5.3. Chạy kiểm thử tự động toàn diện (10/10 Test Suites - 100% Passed)
+### 5.3. Chạy kiểm thử tự động toàn diện (11/11 Test Suites - 100% Passed)
 ```bash
-# Lệnh nhanh nhất: Kích hoạt toàn bộ 10 bộ kiểm thử qua CLI chính
+# Lệnh nhanh nhất: Kích hoạt toàn bộ 11 bộ kiểm thử qua CLI chính
 python src/main.py --test
 
 # Hoặc chạy trực tiếp qua Master Test Runner:
@@ -141,6 +144,7 @@ python tests/test_day2_pipeline.py         # Tích hợp: E2E Pipeline & Data Va
 python tests/test_day3_evaluator.py        # Tích hợp: Multi-Scale Evaluator
 python tests/test_day4_integration.py      # Tích hợp: Full System (TV1+TV2+TV3+TV6)
 python tests/test_day5_integration.py      # Tối ưu: Hybrid GA Seeding & Dynamic Fleet
+python tests/test_day1_parallel_ontime.py  # Mới: Song song hóa A* Matrix & On-time Delivery Rate
 ```
 
 ---

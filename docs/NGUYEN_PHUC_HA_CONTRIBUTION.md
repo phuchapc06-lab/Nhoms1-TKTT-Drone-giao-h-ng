@@ -156,34 +156,52 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
   8. `tests/test_day3_evaluator.py`: BenchmarkEvaluator, Bar Charts & Scalability (TV5).
   9. `tests/test_day4_integration.py`: Cột mốc tích hợp Hệ thống Toàn diện Ngày 4 (TV5).
   10. `tests/test_day5_integration.py`: Hybrid GA Seeding & Dynamic Fleet Sizing Ngày 5 (TV5).
-- **Kết quả kiểm thử:** **10/10 Passed (100%)**.
+  11. `tests/test_day1_parallel_ontime.py`: Song song hóa A* Distance Matrix & Chỉ số Giao đúng giờ Ngày 1 (Thứ Tư - 21/10).
+- **Kết quả kiểm thử:** **11/11 Passed (100%)**.
+
+---
+
+### 11. Đóng góp trong Sprint Nén 4 Ngày (Gộp Tuần 5 & 6) - Thứ Tư (21/10/2026)
+- **Thiết kế & Tích hợp Tính toán Song song (Parallel Computing):**
+  - Nâng cấp module `src/utils/distance_matrix.py` hỗ trợ tính toán ma trận khoảng cách song song đa luồng qua `ThreadPoolExecutor`.
+  - Cài đặt hàm `benchmark_distance_matrix_speedup()` tự động đo đạc thời gian tính toán và hệ số tăng tốc $S_p = T_1 / T_p$.
+  - Tích hợp cờ `--parallel`, `--workers`, `--speedup` vào `src/main.py` và `src/pipeline.py`.
+- **Phát triển Chỉ số Đo lường Tỷ lệ Giao hàng Đúng giờ (On-time Delivery Rate):**
+  - Cập nhật `FitnessCalculator` (`src/algorithms/fitness.py`): Tự động kiểm tra thời gian đến từng khách hàng so với khung giờ Time Window $[start\_tw, end\_tw]$, đếm chính xác số đơn đúng hẹn và tính tỷ lệ phần trăm (`on_time_rate`).
+  - Bổ sung hàm tiện ích `calculate_ontime_rate()`.
+  - Cập nhật `BenchmarkEvaluator` và giao diện CLI để hiển thị và xuất tỷ lệ giao đúng giờ trong bảng kết quả đối sánh.
+- **Xây dựng Bộ Kiểm thử Thứ Tư (Ngày 1):**
+  - Tạo `tests/test_day1_parallel_ontime.py` kiểm thử toàn diện: tính đúng giờ 100%, phát hiện đơn trễ hạn, tính đồng nhất giữa ma trận tuần tự và ma trận song song, đo đạc speedup và pipeline E2E.
+  - Cập nhật Master Test Runner `tests/run_all_tests.py` lên **11/11 Suites Passed (100%)**.
 
 ---
 
 ## 📂 DANH MỤC CÁC FILE ĐÃ TẠO VÀ ĐÓNG GÓP
 | STT | Tên File | Chức năng | Trạng thái |
 | :---: | :--- | :--- | :--- | :---: |
-| 1 | `src/algorithms/fitness.py` | Lập trình Hàm mục tiêu đa ràng buộc & Fitness function cho GA | Hoàn thành |
+| 1 | `src/algorithms/fitness.py` | Lập trình Hàm mục tiêu đa ràng buộc, Fitness function & On-time Delivery Rate | Hoàn thành |
 | 2 | `src/utils/visualizer.py` | Lập trình trực quan hóa bản đồ đa UAV, biểu đồ hội tụ, biểu đồ cột & scalability | Hoàn thành |
 | 3 | `src/utils/validator.py` | Bộ kiểm định chuẩn Data Contract và tính hợp lệ của Solution | Hoàn thành |
-| 4 | `src/pipeline.py` | Khung điều phối tích hợp hệ thống End-to-End, Hybrid GA & đối sánh | Hoàn thành |
+| 4 | `src/pipeline.py` | Khung điều phối tích hợp hệ thống End-to-End, Hybrid GA & Song song hóa | Hoàn thành |
 | 5 | `src/utils/benchmark_evaluator.py` | Module đo đạc chỉ số khoa học, đối sánh đa quy mô và xuất báo cáo | Hoàn thành |
 | 6 | `src/utils/benchmark_generator.py` | Trình sinh các bộ dữ liệu thử nghiệm chuẩn 10, 50, 100, 500 điểm vào `data/raw/` | Hoàn thành |
-| 7 | `src/main.py` | Giao diện điều khiển chính của chương trình qua CLI, tự động tính số Drone | Hoàn thành |
-| 8 | `src/algorithms/energy_manager.py` | Module quản lý pin, tiêu hao tải trọng và tự động chèn trạm sạc | Hoàn thành |
-| 9 | `src/algorithms/local_search.py` | Module tối ưu cục bộ 2-Opt gỡ giao cắt đường bay đa UAV | Hoàn thành |
-| 10 | `src/algorithms/baseline_greedy.py` | Module thuật toán tham lam Nearest Neighbor định tuyến đối sánh | Hoàn thành |
-| 11 | `tests/run_all_tests.py` | Master Test Runner tự động chạy toàn bộ 10 test suites | Hoàn thành |
-| 12 | `tests/test_energy_manager.py` | Unit Test độc lập cho EnergyManager (TV3) | Passed 100% |
-| 13 | `tests/test_benchmark_generator.py` | Unit Test độc lập cho BenchmarkGenerator (TV4) | Passed 100% |
-| 14 | `tests/test_greedy_baseline.py` | Unit Test độc lập cho GreedyRouter & 2-Opt (TV6) | Passed 100% |
-| 15 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
-| 16 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
-| 17 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
-| 18 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
-| 19 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
-| 20 | `.github/workflows/python-tests.yml` | Workflow GitHub Actions CI/CD kiểm thử tự động | Hoàn thành |
-| 21 | `README.md` | Tài liệu dự án hoàn chỉnh, kiến trúc, phân công nhóm, kết quả thực nghiệm | Hoàn thành |
-| 22 | `TIEN_DO.md` | Tài liệu quản lý tiến độ và nghiệm thu toàn dự án Sprint 1 tuần | Hoàn thành |
-| 23 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
-| 24 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+| 7 | `src/main.py` | Giao diện điều khiển chính của chương trình qua CLI, hỗ trợ cờ song song `--parallel` | Hoàn thành |
+| 8 | `src/utils/distance_matrix.py` | Tính toán ma trận khoảng cách né vật cản A*, hỗ trợ tính song song đa luồng & Speedup | Hoàn thành |
+| 9 | `src/algorithms/energy_manager.py` | Module quản lý pin, tiêu hao tải trọng và tự động chèn trạm sạc | Hoàn thành |
+| 10 | `src/algorithms/local_search.py` | Module tối ưu cục bộ 2-Opt gỡ giao cắt đường bay đa UAV | Hoàn thành |
+| 11 | `src/algorithms/baseline_greedy.py` | Module thuật toán tham lam Nearest Neighbor định tuyến đối sánh | Hoàn thành |
+| 12 | `tests/run_all_tests.py` | Master Test Runner tự động chạy toàn bộ 11 test suites | Hoàn thành |
+| 13 | `tests/test_day1_parallel_ontime.py` | Unit Test kiểm thử Song song hóa A* Matrix & Chỉ số Giao đúng giờ Ngày 1 (Thứ 4) | Passed 100% |
+| 14 | `tests/test_energy_manager.py` | Unit Test độc lập cho EnergyManager (TV3) | Passed 100% |
+| 15 | `tests/test_benchmark_generator.py` | Unit Test độc lập cho BenchmarkGenerator (TV4) | Passed 100% |
+| 16 | `tests/test_greedy_baseline.py` | Unit Test độc lập cho GreedyRouter & 2-Opt (TV6) | Passed 100% |
+| 17 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
+| 18 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
+| 19 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
+| 20 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
+| 21 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
+| 22 | `.github/workflows/python-tests.yml` | Workflow GitHub Actions CI/CD kiểm thử tự động | Hoàn thành |
+| 23 | `README.md` | Tài liệu dự án hoàn chỉnh, kiến trúc, phân công nhóm, kết quả thực nghiệm | Hoàn thành |
+| 24 | `TIEN_DO.md` | Tài liệu quản lý tiến độ và nghiệm thu toàn dự án Sprint 1 tuần & Sprint 4 ngày | Hoàn thành |
+| 25 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
+| 26 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |

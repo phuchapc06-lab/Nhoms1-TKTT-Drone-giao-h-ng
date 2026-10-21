@@ -39,9 +39,29 @@
   2. **Bộ biểu đồ Nghiên cứu Khoa học:** Xuất tự động biểu đồ cột so sánh hiệu năng (`comparison_bars.png`) và đồ thị phân tích khả năng mở rộng quy mô (`scalability_analysis.png`).
   3. **Hợp nhất & Kiểm định Mã nguồn:** Tech Lead đã rà soát và merge toàn bộ các nhánh tính năng và báo cáo của các thành viên vào nhánh `develop` và `main`.
   4. **Tài liệu Hướng dẫn Chính thức:** Cập nhật hoàn chỉnh file `README.md` với kiến trúc 3 tầng, hướng dẫn chạy lệnh và kết quả thực nghiệm.
-  5. **Hệ thống Kiểm thử Hồi quy 10/10 Suites:** Chuẩn hóa toàn bộ 10 bài Unit Test và Integration Test độc lập bao quát đầy đủ 6 thành viên, chạy tự động qua `python src/main.py --test` và `python tests/run_all_tests.py` đạt kết quả **100% Passed**.
+  5. **Hệ thống Kiểm thử Hồi quy:** Chuẩn hóa toàn bộ các bài Unit Test và Integration Test độc lập bao quát đầy đủ 6 thành viên, chạy tự động qua `python src/main.py --test` và `python tests/run_all_tests.py` đạt kết quả **100% Passed**.
   6. **Tự động hóa CI/CD:** Thiết lập workflow GitHub Actions `.github/workflows/python-tests.yml` tự động kiểm thử trên Python 3.10, 3.11, 3.12.
   7. **Sẵn sàng cho Tuần làm việc Mới:** Toàn bộ mã nguồn, dữ liệu, tài liệu và test đã hoàn thiện 100% sạch sẽ và đồng bộ!
+
+---
+
+## 🚀 SPRINT NÉN 4 NGÀY (GỘP TUẦN 5 & TUẦN 6): THỰC NGHIỆM ĐA QUY MÔ, SONG SONG HÓA & ĐỘ PHỨC TẠP
+
+### Ngày 1: Thứ Tư (21/10/2026) - Thiết kế Song song hóa & Đo lường Tỷ lệ Giao hàng Đúng giờ
+- **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
+  - **Nâng cấp `FitnessCalculator` (`src/algorithms/fitness.py`):**
+    - Cài đặt cơ chế kiểm tra và tính toán **Tỷ lệ giao hàng đúng giờ (On-time Delivery Rate, %)** dựa trên khung giờ của khách hàng ($t_{arrival} \le \text{end\_tw}$).
+    - Bổ sung hàm tiện ích `calculate_ontime_rate()` và phân tích chi tiết số đơn đúng giờ / trễ giờ trong trường `breakdown`.
+  - **Song song hóa tính toán ma trận khoảng cách (`src/utils/distance_matrix.py`):**
+    - Hỗ trợ tính toán song song đa luồng (`ThreadPoolExecutor`) khi tính các cặp điểm $(i, j)$ né vùng cấm bay A*.
+    - Cài đặt hàm `benchmark_distance_matrix_speedup()` để đo thời gian tính toán và hệ số tăng tốc $S_p = T_1 / T_p$.
+  - **Tích hợp Pipeline & CLI (`src/pipeline.py`, `src/main.py`):**
+    - Tích hợp cờ `--parallel`, `--workers` và `--speedup` vào dòng lệnh CLI.
+    - Cập nhật hàm `compare_algorithms()` hiển thị cột chỉ số Tỷ lệ đúng giờ (On-time Rate).
+    - Cập nhật `BenchmarkEvaluator` xuất chỉ số `greedy_ontime_rate` và `ga_ontime_rate`.
+  - **Bộ Kiểm thử Độc lập:**
+    - Xây dựng bộ test mới `tests/test_day1_parallel_ontime.py` kiểm thử toàn diện 4 chức năng mới (100% Passed).
+    - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **11/11 Suites Passed (100%)**.
 
 ---
 

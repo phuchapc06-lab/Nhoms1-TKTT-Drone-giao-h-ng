@@ -28,10 +28,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Master Test Suite (10/10 Suites)
+      - name: Run Master Test Suite (11/11 Suites)
         run: |
           python tests/run_all_tests.py
 
-      - name: Verify CLI Entrypoint
+      - name: Verify CLI Entrypoint & Parallel Mode
         run: |
-          python src/main.py --benchmark 10 --no-plot
+          python src/main.py --benchmark 10 --no-plot --parallel --speedup

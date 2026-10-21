@@ -84,6 +84,22 @@ def parse_args():
         default=None,
         help="Kích thước quần thể của GA (mặc định: tự động tối ưu theo quy mô)"
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Bật chế độ tính toán song song (Parallel Computing) cho ma trận khoảng cách A*"
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Số lượng luồng/worker tính toán song song (mặc định: tự động phát hiện số CPU cores)"
+    )
+    parser.add_argument(
+        "--speedup",
+        action="store_true",
+        help="Đo đạc và in hệ số tăng tốc (Speedup Sp = T1 / Tp) khi song song hóa A*"
+    )
     return parser.parse_args()
 
 def main():
@@ -153,9 +169,22 @@ def main():
     num_deliveries = len([k for k, v in pipeline.nodes.items() if v.get("type") == "delivery"])
     print(f"[*] Quy mô: {num_deliveries} điểm giao hàng, Tổng tải: {total_demand:.2f}kg -> Bố trí đội bay: {pipeline.num_drones} UAVs.")
 
-    # 4. Tính toán ma trận khoảng cách né vật cản A*
-    print("[*] Đang tính toán ma trận khoảng cách né vùng cấm bay (A* Engine)...")
-    pipeline.compute_distance_matrix(use_astar=True)
+    # 4. Tính toán ma trận khoảng cách né vật cản A* (hỗ trợ đo Speedup và chạy song song)
+    if args.speedup:
+        print("[*] Đang thực nghiệm đo đạc tốc độ tăng tốc song song hóa (Parallel Speedup)...")
+        speedup_res = pipeline.measure_parallel_speedup(workers_list=[1, 2, 4])
+        print("\n" + "="*50)
+        print("   KẾT QUẢ ĐO ĐẠC HỆ SỐ TĂNG TỐC SONG SONG HÓA A*")
+        print("="*50)
+        for w in [1, 2, 4]:
+            t_w = speedup_res["times_sec"].get(f"{w}_workers", 0.0)
+            sp_w = speedup_res["speedup"].get(f"S_{w}", 1.0)
+            print(f"  - {w} Worker(s): {t_w:.4f}s  ->  Speedup S_{w} = {sp_w:.2f}x")
+        print("="*50 + "\n")
+
+    par_mode_str = f" [Song song {args.workers or 'đa'} luồng]" if args.parallel else ""
+    print(f"[*] Đang tính toán ma trận khoảng cách né vùng cấm bay (A* Engine){par_mode_str}...")
+    pipeline.compute_distance_matrix(use_astar=True, parallel=args.parallel, num_workers=args.workers)
 
     # 5. Thực thi thuật toán
     show_gui = not args.no_plot
@@ -166,7 +195,9 @@ def main():
             save_dir=args.save_dir,
             show_plot=show_gui,
             generations=args.generations,
-            pop_size=args.pop_size
+            pop_size=args.pop_size,
+            parallel=args.parallel,
+            num_workers=args.workers
         )
     else:
         # Chạy 1 thuật toán đơn lẻ
@@ -176,7 +207,9 @@ def main():
             save_figure_dir=args.save_dir,
             show_plot=show_gui,
             generations=args.generations,
-            pop_size=args.pop_size
+            pop_size=args.pop_size,
+            parallel=args.parallel,
+            num_workers=args.workers
         )
         print("\n--- KẾT QUẢ THỰC THI ---")
         print(f"Thuật toán:             {result['algorithm']}")
@@ -184,6 +217,7 @@ def main():
         print(f"Tổng quãng đường:       {result['distance']} km")
         print(f"Tổng năng lượng:        {result['energy']} Wh")
         print(f"Phạt vi phạm:           {result['tw_penalty']}")
+        print(f"Tỷ lệ đúng giờ:         {result.get('on_time_rate', 100.0)}% ({result.get('on_time_deliveries', 0)}/{result.get('total_deliveries', 0)} đơn)")
         print(f"Tổng chi phí (Cost):    {result['total_cost']}")
         print(f"Điểm thích nghi (Fit):  {result['fitness']}")
         print(f"Hợp lệ ràng buộc:       {result['is_valid']}")
