@@ -46,7 +46,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 - **File mã nguồn:** `src/utils/validator.py`
 - **Class chính:** `DataContractValidator`
 - **Nội dung thực hiện:**
-  - `validate_benchmark_data()`: Tự động kiểm tra cấu trúc dữ liệu JSON đầu vào (kích thước grid, tọa độ no-fly zones, tính hợp lệ của Depot 0, loại node, demand, time window).
+  - `validate_benchmark_data()`: Tự động kiểm tra cấu trúc dữ liệu JSON đầu vào, thích ứng linh hoạt cả định dạng dictionary lẫn list, chuẩn hóa các trường `grid_size`, `map_size`, `no_fly_zones` và kiểm định tính hợp lệ của Depot 0, loại node, demand, time window.
   - `validate_distance_matrix()`: Kiểm tra kích thước, tính đối xứng, giá trị không âm và đường chéo chính bằng 0.
   - `validate_solution()`: Kiểm tra nghiệm định tuyến đa UAV:
     - Đảm bảo mỗi tuyến đều xuất phát và quay về Depot (0).
@@ -78,28 +78,30 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ### 7. Xây dựng Trình Sinh Dữ Liệu Thử Nghiệm Chuẩn (Benchmark Generator)
 - **File mã nguồn:** `src/utils/benchmark_generator.py`
-- **Class chính:** `BenchmarkGenerator`
+- **Class chính:** `BenchmarkGenerator`, các hàm `generate_benchmark()`, `load_benchmark()`
 - **Nội dung thực hiện:**
-  - Sinh và lưu sẵn 3 bộ dữ liệu chuẩn trong thư mục `data/raw/`:
+  - Sinh và lưu sẵn 4 bộ dữ liệu chuẩn trong thư mục `data/raw/`:
     - `benchmark_10.json`: 10 điểm giao hàng, 3 trạm sạc, 5 vùng cấm bay.
     - `benchmark_50.json`: 50 điểm giao hàng, 6 trạm sạc, 12 vùng cấm bay.
     - `benchmark_100.json`: 100 điểm giao hàng, 10 trạm sạc, 20 vùng cấm bay.
+    - `benchmark_500.json`: 500 điểm giao hàng, 25 trạm sạc, 10 vùng cấm bay.
 
 ---
 
-### 9. Giao diện Thực thi Dòng lệnh Đa Năng (Main CLI Entrypoint)
+### 8. Giao diện Thực thi Dòng lệnh Đa Năng (Main CLI Entrypoint)
 - **File mã nguồn:** `src/main.py`
 - **Nội dung thực hiện:**
   - Hỗ trợ đầy đủ các cờ CLI:
     - `--algorithm [ga|greedy]`: Chạy đơn lẻ từng thuật toán.
-    - `--benchmark [10|50|100|path.json]`: Chọn kịch bản quy mô.
+    - `--benchmark [10|50|100|500|path.json]`: Chọn kịch bản quy mô.
     - `--compare`: Chế độ chạy so sánh trực tiếp.
     - `--evaluate-all`: Chạy toàn bộ suite thực nghiệm đa quy mô và xuất báo cáo.
+    - `--test`: Chạy toàn bộ 10/10 bộ kiểm thử tự động của hệ thống.
     - `--no-plot`, `--save-dir`, `--seed`.
 
 ---
 
-### 10. Cột mốc Tích hợp Hệ thống Toàn diện Ngày 4 (Full System Integration Milestone)
+### 9. Cột mốc Tích hợp Hệ thống Toàn diện Ngày 4 (Full System Integration Milestone)
 - **Files liên quan:**
   - `src/algorithms/energy_manager.py` (TV3: Energy & Charging Station Management)
   - `src/algorithms/local_search.py` (TV6: 2-Opt Local Search Route Optimization)
@@ -112,7 +114,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ---
 
-### 11. Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 (Advanced GA Tuning & Dynamic Scaling)
+### 10. Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 (Advanced GA Tuning & Dynamic Scaling)
 - **Files liên quan:**
   - `src/pipeline.py` (Hỗ trợ Hybrid GA Seeding, EnergyManager in-loop evaluate)
   - `src/main.py` (Cơ chế tự động phân bổ số Drone thích ứng theo tải trọng)
@@ -125,7 +127,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ---
 
-### 12. Cột mốc Nghiệm thu Toàn dự án & Tổng kết Sprint 1 Tuần (Chủ Nhật - 18/10/2026)
+### 11. Cột mốc Nghiệm thu Toàn dự án & Tổng kết Sprint 1 Tuần (Chủ Nhật - 18/10/2026)
 - **Files liên quan:**
   - `README.md` (Tài liệu tổng quan dự án toàn diện, kiến trúc hệ thống, hướng dẫn chạy CLI)
   - `TIEN_DO.md` (Báo cáo tiến độ hoàn thành 100% Sprint 1 tuần của nhóm)
@@ -134,31 +136,27 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
   - `src/utils/benchmark_evaluator.py` (Mở rộng đánh giá tự động đa quy mô, tích hợp sửa đường bay trạm sạc & tối ưu 2-Opt)
   - Review & Merge hoàn tất đóng góp từ nhánh `origin/feature/tv1-contribution`
 - **Nội dung thực hiện:**
-  - **Nghiệm thu thực nghiệm đối sánh đa quy mô tự động (Multi-scale Benchmark Consolidation):**
-    - Hoàn thiện và chạy nghiệm thu chuỗi kịch bản đánh giá quy mô đa dạng: 10, 20, 30, 50, 100 và mở rộng 500 điểm (`python src/main.py --evaluate-all`).
-    - Nâng cấp `benchmark_evaluator.py` để quy trình đối sánh chạy liên hoàn với đầy đủ cơ chế tối ưu cục bộ 2-Opt và tự động chèn trạm sạc bảo vệ pin cho cả GA và Greedy Router.
-    - Cập nhật tự động bảng tổng hợp chỉ số định lượng `data/processed/benchmark_comparison_results.csv`, biểu đồ trực quan hóa so sánh cột `docs/figures/comparison_bars.png` và biểu đồ phân tích khả năng mở rộng `docs/figures/scalability_analysis.png`.
-  - **Hợp nhất mã nguồn và đồng bộ đóng góp toàn nhóm:**
-    - Rà soát và fast-forward merge thành công nhánh `feature/tv1-contribution` (tài liệu `TV1_CONTRIBUTION.md`, chuẩn hóa docstrings toán tử di truyền GA và vá siêu tham số `ga_tuning.py`).
-    - Đồng bộ bộ dữ liệu kịch bản siêu lớn 500 điểm `data/raw/benchmark_500.json` từ nhánh `feature/tv4-benchmark-data` vào hệ thống, đảm bảo tuân thủ 100% Data Contract của dự án.
-  - **Đại tu và hoàn thiện tài liệu dự án chuẩn mực (`README.md`):**
-    - Viết lại toàn bộ `README.md` theo chuẩn tài liệu nghiên cứu chuyên nghiệp: Sơ đồ kiến trúc luồng dữ liệu (Mermaid Flowchart), bảng phân công trách nhiệm 6 thành viên, cơ sở lý thuyết toán học (Haversine + NFZ A*, GA Chromosome + OX + Swap, Energy Non-linear + Charging Repair, 2-Opt Local Search), bảng kết quả thực nghiệm tổng hợp và hướng dẫn chi tiết toàn bộ các cờ lệnh CLI.
-  - **Đóng gói và bảo đảm chất lượng tổng thể (Quality Assurance & Audit):**
-    - Kiểm thử tự động hồi quy 7/7 test suites độc lập, xác nhận toàn bộ hệ sinh thái phần mềm hoạt động trơn tru 100% không phát sinh lỗi.
-    - Đóng gói nghiệm thu toàn bộ Sprint 1 Tuần, đồng bộ toàn diện trên 3 nhánh `nguyen-phuc-ha`, `develop`, và `main`.
+  - **Nghiệm thu thực nghiệm đối sánh đa quy mô tự động:** Hoàn thiện và chạy nghiệm thu chuỗi kịch bản đánh giá quy mô đa dạng: 10, 20, 30, 50, 100 và mở rộng 500 điểm (`python src/main.py --evaluate-all`).
+  - **Hợp nhất mã nguồn và đồng bộ đóng góp toàn nhóm:** Fast-forward merge thành công nhánh `feature/tv1-contribution`, tích hợp bộ benchmark 500 điểm `data/raw/benchmark_500.json`.
+  - **Đại tu tài liệu dự án chuẩn mực (`README.md`):** Hoàn thiện sơ đồ kiến trúc 3 tầng, bảng phân công vai trò, kết quả thực nghiệm và hướng dẫn CLI.
+  - **Tự động hóa CI/CD:** Thiết lập GitHub Actions `.github/workflows/python-tests.yml`.
 
 ---
 
-### 13. Kiểm thử Tự động Toàn diện (Unit Testing & Validation)
-- **Danh mục 7 file test độc lập:**
-  - `tests/test_distance_matrix.py`: Kiểm thử A* tối ưu, tính đối xứng và MD5 Cache (TV2).
-  - `tests/test_ga.py`: Kiểm thử GA Core, toán tử OX, Swap, Tuning và Seeding (TV1).
-  - `tests/test_member5.py`: Kiểm thử độc lập Fitness & Visualizer (TV5).
-  - `tests/test_day2_pipeline.py`: Kiểm thử Pipeline tích hợp E2E & Validator (TV5).
-  - `tests/test_day3_evaluator.py`: Kiểm thử BenchmarkEvaluator, Bar Charts & Scalability (TV5).
-  - `tests/test_day4_integration.py`: Kiểm thử Cột mốc tích hợp Hệ thống Ngày 4 (TV5).
-  - `tests/test_day5_integration.py`: Kiểm thử Cột mốc Tinh chỉnh & Tối ưu Nâng cao Ngày 5 (TV5).
-- **Kết quả kiểm thử:** **100% Passed**.
+### 12. Kiểm thử Tự động Toàn diện (10/10 Test Suites - 100% Passed)
+- **File runner:** `tests/run_all_tests.py` (và lệnh `python src/main.py --test`)
+- **Danh mục 10 file test độc lập:**
+  1. `tests/test_distance_matrix.py`: A* tối ưu, tính đối xứng và MD5 Cache (TV2).
+  2. `tests/test_ga.py`: GA Core Engine, toán tử OX, Swap, Tuning và Seeding (TV1).
+  3. `tests/test_energy_manager.py`: Tiêu hao tải trọng, chèn trạm sạc, kiểm soát pin (TV3).
+  4. `tests/test_benchmark_generator.py`: Kiểm định bộ dữ liệu chuẩn 10, 50, 100, 500 (TV4).
+  5. `tests/test_member5.py`: Fitness đa mục tiêu & Visualizer (TV5).
+  6. `tests/test_greedy_baseline.py`: Baseline Greedy Router & 2-Opt Local Search (TV6).
+  7. `tests/test_day2_pipeline.py`: Pipeline tích hợp E2E & Validator (TV5).
+  8. `tests/test_day3_evaluator.py`: BenchmarkEvaluator, Bar Charts & Scalability (TV5).
+  9. `tests/test_day4_integration.py`: Cột mốc tích hợp Hệ thống Toàn diện Ngày 4 (TV5).
+  10. `tests/test_day5_integration.py`: Hybrid GA Seeding & Dynamic Fleet Sizing Ngày 5 (TV5).
+- **Kết quả kiểm thử:** **10/10 Passed (100%)**.
 
 ---
 
@@ -170,18 +168,22 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 | 3 | `src/utils/validator.py` | Bộ kiểm định chuẩn Data Contract và tính hợp lệ của Solution | Hoàn thành |
 | 4 | `src/pipeline.py` | Khung điều phối tích hợp hệ thống End-to-End, Hybrid GA & đối sánh | Hoàn thành |
 | 5 | `src/utils/benchmark_evaluator.py` | Module đo đạc chỉ số khoa học, đối sánh đa quy mô và xuất báo cáo | Hoàn thành |
-| 6 | `src/utils/benchmark_generator.py` | Trình sinh các bộ dữ liệu thử nghiệm chuẩn 10, 50, 100 điểm vào `data/raw/` | Hoàn thành |
+| 6 | `src/utils/benchmark_generator.py` | Trình sinh các bộ dữ liệu thử nghiệm chuẩn 10, 50, 100, 500 điểm vào `data/raw/` | Hoàn thành |
 | 7 | `src/main.py` | Giao diện điều khiển chính của chương trình qua CLI, tự động tính số Drone | Hoàn thành |
 | 8 | `src/algorithms/energy_manager.py` | Module quản lý pin, tiêu hao tải trọng và tự động chèn trạm sạc | Hoàn thành |
 | 9 | `src/algorithms/local_search.py` | Module tối ưu cục bộ 2-Opt gỡ giao cắt đường bay đa UAV | Hoàn thành |
 | 10 | `src/algorithms/baseline_greedy.py` | Module thuật toán tham lam Nearest Neighbor định tuyến đối sánh | Hoàn thành |
-| 11 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
-| 12 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
-| 13 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
-| 14 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
-| 15 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
-| 16 | `README.md` | Tài liệu dự án hoàn chỉnh, kiến trúc, phân công nhóm, kết quả thực nghiệm | Hoàn thành |
-| 17 | `TIEN_DO.md` | Tài liệu quản lý tiến độ và nghiệm thu toàn dự án Sprint 1 tuần | Hoàn thành |
-| 18 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
-| 19 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
-
+| 11 | `tests/run_all_tests.py` | Master Test Runner tự động chạy toàn bộ 10 test suites | Hoàn thành |
+| 12 | `tests/test_energy_manager.py` | Unit Test độc lập cho EnergyManager (TV3) | Passed 100% |
+| 13 | `tests/test_benchmark_generator.py` | Unit Test độc lập cho BenchmarkGenerator (TV4) | Passed 100% |
+| 14 | `tests/test_greedy_baseline.py` | Unit Test độc lập cho GreedyRouter & 2-Opt (TV6) | Passed 100% |
+| 15 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
+| 16 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
+| 17 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
+| 18 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
+| 19 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
+| 20 | `.github/workflows/python-tests.yml` | Workflow GitHub Actions CI/CD kiểm thử tự động | Hoàn thành |
+| 21 | `README.md` | Tài liệu dự án hoàn chỉnh, kiến trúc, phân công nhóm, kết quả thực nghiệm | Hoàn thành |
+| 22 | `TIEN_DO.md` | Tài liệu quản lý tiến độ và nghiệm thu toàn dự án Sprint 1 tuần | Hoàn thành |
+| 23 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
+| 24 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |

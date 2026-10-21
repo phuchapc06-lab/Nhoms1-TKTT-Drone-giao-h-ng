@@ -1,6 +1,11 @@
 # UAV Delivery Routing Problem (UDRP)
 ## Hệ thống Tối ưu hóa Định tuyến Đội bay UAV Giao hàng Đô thị Thông minh
 
+[![Python CI - UAV Routing Tests](https://github.com/phuchapc06-lab/Nhoms1-TKTT-Drone-giao-h-ng/actions/workflows/python-tests.yml/badge.svg)](https://github.com/phuchapc06-lab/Nhoms1-TKTT-Drone-giao-h-ng/actions)
+![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
+![Tests](https://img.shields.io/badge/tests-10%2F10%20passing-brightgreen)
+![Status](https://img.shields.io/badge/status-production%20ready-success)
+
 > **Đồ án môn học:** Phân tích & Thiết kế Thuật toán — Trường Đại học Kinh tế Quốc dân (NEU)  
 > **Nhóm thực hiện:** Nhóm 1  
 > **Trưởng nhóm / Kỹ sư Tích hợp Hệ thống (Tech Lead):** Nguyễn Phúc Hà (Thành viên 5)  
@@ -92,7 +97,7 @@ Số liệu thực nghiệm đo đạc thực tế trên hệ thống (trích xu
 ## 🚀 5. HƯỚNG DẪN CÀI ĐẶT & THỰC THI (QUICK START)
 
 ### 5.1. Yêu cầu môi trường
-- Python 3.9+
+- Python 3.9+ (hỗ trợ 3.10, 3.11, 3.12)
 - Cài đặt thư viện phụ thuộc:
 ```bash
 pip install -r requirements.txt
@@ -101,27 +106,41 @@ pip install -r requirements.txt
 ### 5.2. Chạy thử nghiệm đối sánh trực tiếp (CLI)
 ```bash
 # 1. So sánh trực quan trên kịch bản chuẩn 10 điểm (Có đồ họa hiển thị)
-python src/main.py --benchmark data/raw/benchmark_10.json --compare
+python src/main.py --benchmark 10 --compare
 
 # 2. Chế độ chạy nhanh không bật popup cửa sổ đồ thị (Batch run)
-python src/main.py --benchmark data/raw/benchmark_10.json --compare --no-plot
+python src/main.py --benchmark 10 --compare --no-plot
 
-# 3. Thử nghiệm trên quy mô trung bình (50 điểm giao hàng, tự động bố trí 14 UAV)
-python src/main.py --benchmark data/raw/benchmark_50.json --generations 50 --compare --no-plot
+# 3. Thử nghiệm trên quy mô trung bình (50 điểm giao hàng, tự động tính số UAV)
+python src/main.py --benchmark 50 --compare --no-plot
 
-# 4. Tự động chạy Suite thực nghiệm đa quy mô và cập nhật báo cáo khoa học
+# 4. Thử nghiệm quy mô lớn 100 và 500 điểm
+python src/main.py --benchmark 100 --algorithm ga --no-plot
+python src/main.py --benchmark 500 --algorithm greedy --no-plot
+
+# 5. Tự động chạy Suite thực nghiệm đa quy mô và cập nhật báo cáo khoa học
 python src/main.py --evaluate-all
 ```
 
-### 5.3. Chạy kiểm thử tự động toàn diện (Unit & Integration Tests - 100% Passed)
+### 5.3. Chạy kiểm thử tự động toàn diện (10/10 Test Suites - 100% Passed)
 ```bash
-python tests/test_distance_matrix.py   # Test A* tối ưu & MD5 Cache (TV2) - Passed 100%
-python tests/test_ga.py                # Test GA Core Engine & Tuning (TV1) - Passed 100%
-python tests/test_member5.py           # Test Fitness & Visualizer (TV5) - Passed 100%
-python tests/test_day2_pipeline.py     # Test Pipeline E2E & Validator (TV5) - Passed 100%
-python tests/test_day3_evaluator.py    # Test Benchmark Evaluator (TV5) - Passed 100%
-python tests/test_day4_integration.py  # Test Cột mốc Tích hợp Toàn diện (TV5) - Passed 100%
-python tests/test_day5_integration.py  # Test Hybrid GA Seeding & Dynamic Fleet (TV5) - Passed 100%
+# Lệnh nhanh nhất: Kích hoạt toàn bộ 10 bộ kiểm thử qua CLI chính
+python src/main.py --test
+
+# Hoặc chạy trực tiếp qua Master Test Runner:
+python tests/run_all_tests.py
+
+# Hoặc chạy kiểm thử từng module chuyên biệt:
+python tests/test_distance_matrix.py       # TV2: A* Octile & MD5 Cache
+python tests/test_ga.py                    # TV1: GA Core Engine & Tuning
+python tests/test_energy_manager.py         # TV3: Energy Manager & Charging
+python tests/test_benchmark_generator.py   # TV4: Multi-Scale Benchmark Generator
+python tests/test_member5.py               # TV5: Multi-Objective Fitness & Visualizer
+python tests/test_greedy_baseline.py       # TV6: Baseline Greedy & 2-Opt Local Search
+python tests/test_day2_pipeline.py         # Tích hợp: E2E Pipeline & Data Validator
+python tests/test_day3_evaluator.py        # Tích hợp: Multi-Scale Evaluator
+python tests/test_day4_integration.py      # Tích hợp: Full System (TV1+TV2+TV3+TV6)
+python tests/test_day5_integration.py      # Tối ưu: Hybrid GA Seeding & Dynamic Fleet
 ```
 
 ---
@@ -130,6 +149,9 @@ python tests/test_day5_integration.py  # Test Hybrid GA Seeding & Dynamic Fleet 
 
 ```
 uav-routing-project/
+├── .github/
+│   └── workflows/
+│       └── python-tests.yml           # CI/CD tự động kiểm thử toàn diện trên GitHub Actions
 ├── data/
 │   ├── raw/                           # Các bộ dữ liệu chuẩn (benchmark_10, 50, 100, 500.json)
 │   └── processed/                     # Dữ liệu xuất thực nghiệm (CSV) và cache khoảng cách (.pkl)
@@ -158,7 +180,18 @@ uav-routing-project/
 │   │   └── ga_tuning.py               # Script quét siêu tham số GA tự động (TV1)
 │   ├── pipeline.py                    # Khung điều phối tích hợp hệ thống toàn trình End-to-End (TV5)
 │   └── main.py                        # Điểm khởi chạy chính của chương trình qua dòng lệnh CLI (TV5)
-├── tests/                             # Hệ thống 7 bộ Unit Test độc lập kiểm định chất lượng (100% Passed)
+├── tests/                             # Hệ thống 10 bộ Unit & Integration Tests (100% Passed)
+│   ├── run_all_tests.py               # Master Test Runner chạy toàn bộ 10 suites
+│   ├── test_distance_matrix.py        # Unit Test TV2
+│   ├── test_ga.py                     # Unit Test TV1
+│   ├── test_energy_manager.py         # Unit Test TV3
+│   ├── test_benchmark_generator.py    # Unit Test TV4
+│   ├── test_member5.py                # Unit Test TV5
+│   ├── test_greedy_baseline.py        # Unit Test TV6
+│   ├── test_day2_pipeline.py          # Integration Test Ngày 2
+│   ├── test_day3_evaluator.py         # Integration Test Ngày 3
+│   ├── test_day4_integration.py       # Integration Test Ngày 4
+│   └── test_day5_integration.py       # Integration Test Ngày 5
 ├── TIEN_DO.md                         # Bảng theo dõi tiến độ tổng thể của toàn dự án
 ├── requirements.txt                   # Danh mục thư viện Python phụ thuộc
 └── README.md                          # Tài liệu hướng dẫn chính thức của dự án (File này)
@@ -169,5 +202,5 @@ uav-routing-project/
 ## 🏆 7. KẾT LUẬN & NGHIỆM THU DỰ ÁN
 
 - **Trạng thái Sprint 1 tuần:** **Hoàn thành 100%** đúng tiến độ đề ra vào **Chủ Nhật (18/10/2026)**.
-- Toàn bộ 6 module của 6 thành viên đã được ghép nối hoàn chỉnh, kiểm thử tự động toàn diện và nghiệm thu đạt chuẩn chất lượng nghiên cứu khoa học.
-- Đầy đủ báo cáo khoa học, bảng số liệu thực nghiệm đối sánh, biểu đồ phân tích và mã nguồn sạch sẽ trên GitHub.
+- Toàn bộ 6 module của 6 thành viên đã được ghép nối hoàn chỉnh, kiểm thử tự động toàn diện (10/10 test suites - 100% Passed) và nghiệm thu đạt chuẩn chất lượng nghiên cứu khoa học.
+- Tự động hóa CI/CD với GitHub Actions, sẵn sàng 100% cho tuần làm việc mới.

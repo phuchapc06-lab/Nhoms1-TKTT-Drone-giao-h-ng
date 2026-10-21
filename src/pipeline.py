@@ -73,9 +73,30 @@ class UAVRoutingPipeline:
                 print(f"  - {err}")
             return False
 
-        self.grid_size = tuple(data["grid_size"])
-        self.no_fly_zones = [tuple(z) for z in data["no_fly_zones"]]
-        self.nodes = {int(k): v for k, v in data["nodes"].items()}
+        # 1. Grid size normalization
+        if "grid_size" in data:
+            self.grid_size = tuple(data["grid_size"])
+        elif "map_size" in data:
+            ms = int(data["map_size"])
+            self.grid_size = (ms, ms)
+
+        # 2. No-fly zones normalization
+        self.no_fly_zones = []
+        for z in data.get("no_fly_zones", []):
+            if isinstance(z, dict) and "bounds" in z:
+                b = z["bounds"]
+                w = max(1, int(b[2] - b[0]))
+                h = max(1, int(b[3] - b[1]))
+                self.no_fly_zones.append((int(b[0]), int(b[1]), w, h))
+            elif isinstance(z, (list, tuple)) and len(z) >= 4:
+                self.no_fly_zones.append(tuple(int(v) for v in z[:4]))
+
+        # 3. Nodes normalization
+        raw_nodes = data["nodes"]
+        if isinstance(raw_nodes, list):
+            self.nodes = {int(node["id"]): node for node in raw_nodes if isinstance(node, dict) and "id" in node}
+        else:
+            self.nodes = {int(k): v for k, v in raw_nodes.items()}
         print(f"[Pipeline] Da nap thanh cong benchmark tu {file_path} voi {len(self.nodes)} nodes.")
         return True
 

@@ -7,20 +7,47 @@ import math
 from typing import List, Dict, Tuple, Any, Optional
 
 class EnergyManager:
+    """
+    Quản lý tiêu hao năng lượng pin của đội bay UAV theo tải trọng hàng hóa,
+    kiểm tra ngưỡng an toàn và lập trình tự động chèn trạm sạc vào lộ trình.
+    """
     def __init__(
         self,
         battery_capacity: float = 300.0,       # Dung lượng pin tối đa của Drone (Wh)
         base_consumption: float = 1.0,         # Tiêu hao cơ sở khi bay không tải (Wh / km)
         payload_factor: float = 0.15,          # Hệ số tiêu hao thêm trên mỗi kg hàng hóa (Wh / km / kg)
         min_battery_threshold: float = 0.15,   # Ngưỡng pin an toàn (15% dung lượng) cần ghé trạm sạc
-        charging_rate: float = 20.0            # Tốc độ sạc pin (Wh / phút)
+        charging_rate: float = 20.0,           # Tốc độ sạc pin (Wh / phút)
+        charging_time: float = 5.0,            # Thời gian sạc mặc định tại trạm (phút)
+        min_battery_ratio: Optional[float] = None
     ):
-        self.battery_capacity = battery_capacity
-        self.base_consumption = base_consumption
-        self.payload_factor = payload_factor
-        self.min_battery_threshold = min_battery_threshold
-        self.min_safe_battery = battery_capacity * min_battery_threshold
-        self.charging_rate = charging_rate
+        if min_battery_ratio is not None:
+            min_battery_threshold = min_battery_ratio
+
+        if not math.isfinite(battery_capacity) or battery_capacity <= 0:
+            raise ValueError("battery_capacity must be a positive finite number")
+        if not math.isfinite(min_battery_threshold) or not (0 <= min_battery_threshold < 1):
+            raise ValueError("min_battery_threshold must be in [0, 1)")
+        if not math.isfinite(charging_time) or charging_time < 0:
+            raise ValueError("charging_time must be a non-negative finite number")
+
+        self.battery_capacity = float(battery_capacity)
+        self.base_consumption = float(base_consumption)
+        self.payload_factor = float(payload_factor)
+        self.min_battery_threshold = float(min_battery_threshold)
+        self.min_battery_ratio = self.min_battery_threshold
+        self.min_safe_battery = self.battery_capacity * self.min_battery_threshold
+        self.charging_rate = float(charging_rate)
+        self.charging_time = float(charging_time)
+
+    def get_charging_time(self, node: Dict[str, Any]) -> float:
+        """
+        Lấy thời gian phục vụ sạc tại trạm từ cấu hình node, hoặc lấy giá trị mặc định.
+        """
+        duration = float(node.get("service_time", self.charging_time))
+        if not math.isfinite(duration) or duration < 0:
+            return self.charging_time
+        return duration
 
     def calculate_segment_energy(self, distance: float, cargo_weight: float) -> float:
         """
@@ -161,3 +188,15 @@ class EnergyManager:
                     idx += 1
 
         return repaired_route, total_energy, is_feasible
+
+    def insert_charging_stations(
+        self,
+        route: List[int],
+        dist_matrix: Any,
+        nodes: Dict[int, Dict[str, Any]]
+    ) -> Tuple[List[int], bool]:
+        """
+        Giao diện đồng bộ với Module TV3: Trả về lộ trình đã chèn trạm sạc và cờ hợp lệ.
+        """
+        repaired, _, is_feasible = self.repair_route_with_charging(route, dist_matrix, nodes)
+        return repaired, is_feasible

@@ -1,61 +1,47 @@
-# THEO DÕI TIẾN ĐỘ DỰ ÁN (TIEN_DO.md)
-
-Đồ án môn Phân tích & Thiết kế Thuật toán (NEU) — **UAV Delivery Routing Problem (UDRP)**:  
-Tối ưu hóa định tuyến đội bay đa Drone giao hàng đô thị thông minh, né vùng cấm bay ($A^*$), kiểm soát tải trọng, năng lượng pin, khung giờ giao hàng (Time Windows), tối ưu bằng Genetic Algorithm (GA) và so sánh với Baseline Greedy + 2-Opt.
+# TIẾN ĐỘ THỰC HIỆN ĐỀ TÀI: UAV DELIVERY ROUTING PROBLEM (UDRP)
+## Nhóm 1 - Môn Phân tích & Thiết kế Thuật toán
 
 ---
 
-## 📌 Lệnh thực thi & Kiểm thử thường dùng
-
-Chạy từ thư mục gốc của dự án:
-```bash
-# 1. Chạy demo đối sánh trực quan (bật bản đồ & in bảng so sánh hiệu năng)
-python src/main.py --compare
-
-# 2. Chạy riêng giải thuật Di truyền GA (10 điểm giao hàng)
-python src/main.py --algorithm ga --benchmark 10
-
-# 3. Chạy kiểm thử tự động đo đạc đa quy mô (10, 20, 30 điểm) và xuất báo cáo khoa học
-python src/main.py --evaluate-all
-
-# 4. Chạy toàn bộ các bài Unit Test độc lập (100% Passed)
-python tests/test_distance_matrix.py # Test A* tối ưu & Ma trận khoảng cách (TV2) - Passed 100%
-python tests/test_ga.py              # Test giải thuật GA Core & Tuning (TV1) - Passed 100%
-python tests/test_member5.py         # Test Fitness & Visualizer (TV5) - Passed 100%
-python tests/test_day2_pipeline.py   # Test Pipeline E2E & Validator (TV5) - Passed 100%
-python tests/test_day3_evaluator.py  # Test Evaluator & Metrics Suite (TV5) - Passed 100%
-python tests/test_day4_integration.py # Test Cột mốc Tích hợp Hệ thống Toàn diện Ngày 4 - Passed 100%
-python tests/test_day5_integration.py # Test Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 - Passed 100%
-```
+## 🎯 Tổng quan Tiến độ Sprint 1 Tuần (7 Ngày)
+- **Mục tiêu:** Xây dựng hệ thống hoàn chỉnh giải bài toán Định tuyến Đội bay UAV giao hàng trong đô thị né vùng cấm bay, quản lý pin và tối ưu hóa đa mục tiêu.
+- **Trạng thái:** **HOÀN THÀNH 100% TOÀN DỰ ÁN (SẴN SÀNG CHO TUẦN LÀM VIỆC MỚI)**.
 
 ---
 
-## 📊 Bảng trạng thái & Tiến độ chi tiết từng module
+## 📅 Tiến độ Chi tiết Từng Ngày
 
-| STT | Module chức năng | File mã nguồn | Thành viên phụ trách | Trạng thái hiện tại |
-|:---:|---|---|:---:|:---:|
-| 1 | **Hàm mục tiêu (Fitness)** | `src/algorithms/fitness.py` | **TV5 (Nguyễn Phúc Hà)** | **Đã hoàn thành 100%** |
-| 2 | **Trực quan hóa (Visualizer)** | `src/utils/visualizer.py` | **TV5 (Nguyễn Phúc Hà)** | **Đã hoàn thành 100%** (Bản đồ đa UAV, Hội tụ GA, Bar Charts, Scalability) |
-| 3 | **Bộ kiểm định Data Contract** | `src/utils/validator.py` | **TV5 (Nguyễn Phúc Hà)** | **Đã hoàn thành 100%** |
-| 4 | **Pipeline điều phối E2E & CLI** | `src/pipeline.py`, `src/main.py` | **TV5 (Nguyễn Phúc Hà)** | **Đã hoàn thành 100%** (Tự động tính số Drone theo tải trọng, điều phối đa quy mô) |
-| 5 | **Bộ đo đạc thực nghiệm khoa học** | `src/utils/benchmark_evaluator.py` | **TV5 (Nguyễn Phúc Hà)** | **Đã hoàn thành 100%** (Xuất `docs/EXPERIMENT_RESULTS.md`) |
-| 6 | **Giải thuật Di truyền (GA Core & Tuning)** | `src/algorithms/genetic_algorithm.py`, `src/utils/ga_tuning.py` | **TV1 (Sieqhart262) / TV5** | **Đã hoàn thành 100%** (Đã review & merge PR #3 và PR #7: Tinh chỉnh siêu tham số, Greedy Seeding, Scale penalty factor) |
-| 7 | **A* Tối ưu + Ma trận khoảng cách** | `src/models/optimized_astar.py`, `src/utils/distance_matrix.py` | **TV2 (lynseyngoc)** | **Đã hoàn thành 100%** (A* Octile, Bresenham Line-of-sight, Smooth path, MD5 Cache - Đã review & merge PR #6) |
-| 8 | **Sinh dữ liệu Benchmark chuẩn** | `src/utils/benchmark_generator.py` | **TV4 / TV5** | **Đã hoàn thành 100%** (Có sẵn `benchmark_10.json`, `50.json`, `100.json` trong `data/raw/`) |
-| 9 | **Ràng buộc Pin & Trạm sạc** | `src/algorithms/energy_manager.py` | **TV3 / TV5 (Tích hợp)** | **Đã hoàn thành 100%** (Mô hình tiêu hao theo tải trọng, tự động chèn trạm sạc, đã vá lỗi lặp vô hạn) |
-| 10 | **Thuật toán Baseline Greedy & 2-Opt** | `src/algorithms/baseline_greedy.py`, `src/algorithms/local_search.py` | **TV6 / TV5 (Tích hợp)** | **Đã hoàn thành 100%** (Greedy Nearest Neighbor & Tối ưu cục bộ 2-Opt gỡ giao cắt đường bay) |
+### Ngày 1 (Thứ Hai - 12/10/2026)
+- **Thành viên 5 (Tech Lead):** Hoàn thành cài đặt Hàm thích nghi đa mục tiêu (`FitnessCalculator`), trực quan hóa bản đồ đa Drone (`UAVVisualizer`) và đồ thị hội tụ GA. Viết bộ kiểm thử độc lập `test_member5.py` đạt 100% Passed.
+
+### Ngày 2 (Thứ Ba - 13/10/2026)
+- **Thành viên 5 (Tech Lead):** Xây dựng khung điều phối tích hợp toàn trình `pipeline.py` (E2E), xây dựng bộ kiểm định chuẩn `DataContractValidator`, nâng cấp `main.py` hỗ trợ dòng lệnh và viết bộ test `test_day2_pipeline.py` đạt 100% Passed.
+
+### Ngày 3 (Thứ Tư - 14/10/2026)
+- **Thành viên 5 (Tech Lead):** Phát triển bộ đánh giá đa quy mô `BenchmarkEvaluator`, sinh dữ liệu chuẩn hóa, xuất báo cáo `EXPERIMENT_RESULTS.md`, biểu đồ so sánh cột và Scalability. Viết bộ kiểm thử `test_day3_evaluator.py` đạt 100% Passed.
+
+### Ngày 4 (Thứ Năm - 15/10/2026)
+- **Thành viên 5 (Tech Lead):** Tích hợp toàn diện 4 module của các thành viên vào Pipeline:
+  - Tích hợp `EnergyManager` (TV3): Tiêu hao phi tuyến theo tải trọng & tự động chèn trạm sạc.
+  - Tích hợp `local_search.py` (TV6): Thuật toán 2-Opt gỡ giao cắt đường bay.
+  - Tích hợp `baseline_greedy.py` (TV6): Thuật toán tham lam đối chuẩn.
+  - Viết bộ kiểm thử `test_day4_integration.py` đạt 100% Passed.
+
+### Ngày 5 (Thứ Sáu - 16/10/2026)
+- **Thành viên 5 (Tech Lead):** Đánh giá & duyệt PR #7 của TV1, cài đặt cơ chế Hybrid GA (Greedy Seeding), cơ chế tự động mở rộng đội bay thích ứng theo tải trọng trên các quy mô 50 và 100 điểm. Viết bộ kiểm thử `test_day5_integration.py` đạt 100% Passed.
 
 ---
 
 ## 🏆 Cột mốc Nghiệm thu Toàn dự án & Tổng kết Sprint 1 Tuần (Chủ Nhật - 18/10/2026)
 - **Tỷ lệ hoàn thành khối lượng công việc Toàn dự án:** **100% Hoàn thành xuất sắc** (Đạt chuẩn nghiên cứu khoa học và sẵn sàng bảo vệ).
 - **Các thành quả nghiệm thu chính trong Ngày Chủ nhật:**
-  1. **Thực nghiệm Đối sánh Đa quy mô Toàn diện:** Đã thực thi chuỗi kịch bản đa quy mô (N = 10, 20, 30, 50 điểm), thu thập số liệu chi tiết và cập nhật báo cáo khoa học `docs/EXPERIMENT_RESULTS.md` cùng file CSV `data/processed/benchmark_comparison_results.csv`.
+  1. **Thực nghiệm Đối sánh Đa quy mô Toàn diện:** Đã thực thi chuỗi kịch bản đa quy mô (N = 10, 20, 30, 50, 100, 500 điểm), thu thập số liệu chi tiết và cập nhật báo cáo khoa học `docs/EXPERIMENT_RESULTS.md` cùng file CSV `data/processed/benchmark_comparison_results.csv`.
   2. **Bộ biểu đồ Nghiên cứu Khoa học:** Xuất tự động biểu đồ cột so sánh hiệu năng (`comparison_bars.png`) và đồ thị phân tích khả năng mở rộng quy mô (`scalability_analysis.png`).
   3. **Hợp nhất & Kiểm định Mã nguồn:** Tech Lead đã rà soát và merge toàn bộ các nhánh tính năng và báo cáo của các thành viên vào nhánh `develop` và `main`.
   4. **Tài liệu Hướng dẫn Chính thức:** Cập nhật hoàn chỉnh file `README.md` với kiến trúc 3 tầng, hướng dẫn chạy lệnh và kết quả thực nghiệm.
-  5. **Chất lượng Kiểm thử:** Toàn bộ 7 bài Unit Test độc lập đều đạt kết quả **100% Passed**.
-  6. **Sẵn sàng Bảo vệ:** Toàn bộ sản phẩm Sprint 1 tuần đã được đóng gói hoàn tất, đội ngũ sẵn sàng chuyển sang giai đoạn làm Báo cáo tổng kết và Slide thuyết trình!
+  5. **Hệ thống Kiểm thử Hồi quy 10/10 Suites:** Chuẩn hóa toàn bộ 10 bài Unit Test và Integration Test độc lập bao quát đầy đủ 6 thành viên, chạy tự động qua `python src/main.py --test` và `python tests/run_all_tests.py` đạt kết quả **100% Passed**.
+  6. **Tự động hóa CI/CD:** Thiết lập workflow GitHub Actions `.github/workflows/python-tests.yml` tự động kiểm thử trên Python 3.10, 3.11, 3.12.
+  7. **Sẵn sàng cho Tuần làm việc Mới:** Toàn bộ mã nguồn, dữ liệu, tài liệu và test đã hoàn thiện 100% sạch sẽ và đồng bộ!
 
 ---
 
@@ -84,6 +70,8 @@ solution = [
 ## 📂 Danh mục tài liệu báo cáo có sẵn trong `docs/`
 1. `docs/EXPERIMENT_RESULTS.md`: Báo cáo kết quả thử nghiệm đối sánh khoa học đa quy mô.
 2. `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md`: Báo cáo minh chứng đóng góp chi tiết của Nhóm trưởng.
-3. `docs/KE_HOACH_PHAN_CONG_NHOM_6_NGUOI.txt`: Bảng phân công chi tiết công việc cho 6 thành viên.
-4. `docs/Mathematical_Model.md`: Mô hình hóa toán học chính thức (Objective & Constraints).
-5. `docs/figures/`: Thư mục lưu toàn bộ ảnh bản đồ đường bay và biểu đồ nghiên cứu.
+3. `docs/TV1_CONTRIBUTION.md`: Báo cáo minh chứng đóng góp chi tiết của Thành viên 1.
+4. `docs/GA_TUNING_RESULTS.md`: Báo cáo kết quả quét siêu tham số tối ưu giải thuật di truyền.
+5. `docs/KE_HOACH_PHAN_CONG_NHOM_6_NGUOI.txt`: Bảng phân công chi tiết công việc cho 6 thành viên.
+6. `docs/Mathematical_Model.md`: Mô hình hóa toán học chính thức (Objective & Constraints).
+7. `docs/figures/`: Thư mục lưu toàn bộ ảnh bản đồ đường bay và biểu đồ nghiên cứu.

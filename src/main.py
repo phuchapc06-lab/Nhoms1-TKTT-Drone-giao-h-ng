@@ -11,8 +11,9 @@ import math
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-# Thêm đường dẫn src vào Python path
+# Thêm đường dẫn src và root vào Python path
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from pipeline import UAVRoutingPipeline
 
@@ -31,7 +32,7 @@ def parse_args():
         "--benchmark",
         type=str,
         default="10",
-        help="Quy mô số điểm giao hàng (10, 50, 100) hoặc đường dẫn file JSON"
+        help="Quy mô số điểm giao hàng (10, 50, 100, 500) hoặc đường dẫn file JSON"
     )
     parser.add_argument(
         "--compare",
@@ -42,6 +43,11 @@ def parse_args():
         "--evaluate-all",
         action="store_true",
         help="Chạy kiểm thử đối sánh đa quy mô, xuất báo cáo EXPERIMENT_RESULTS.md và biểu đồ cột/scalability"
+    )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Chạy toàn bộ 10/10 bộ kiểm thử tự động của hệ thống (Master Test Runner)"
     )
     parser.add_argument(
         "--no-plot",
@@ -87,6 +93,12 @@ def main():
     print("   Phụ trách Kiến trúc & Tích hợp: Nguyễn Phúc Hà (Thành viên 5)       ")
     print("======================================================================")
 
+    # Nếu người dùng chọn chạy bộ kiểm thử toàn diện
+    if args.test:
+        from tests.run_all_tests import main as run_tests
+        run_tests()
+        return
+
     # Nếu người dùng chọn chạy bộ đánh giá thực nghiệm đa quy mô
     if args.evaluate_all:
         from utils.benchmark_evaluator import BenchmarkEvaluator
@@ -113,9 +125,15 @@ def main():
     )
 
     # 2. Nạp dữ liệu
-    if args.benchmark.endswith(".json") and os.path.exists(args.benchmark):
-        print(f"[*] Đang nạp tập dữ liệu từ file: {args.benchmark}")
-        pipeline.load_benchmark_from_json(args.benchmark)
+    candidate_file = (
+        args.benchmark
+        if args.benchmark.endswith(".json")
+        else os.path.join("data", "raw", f"benchmark_{args.benchmark}.json")
+    )
+
+    if os.path.exists(candidate_file):
+        print(f"[*] Đang nạp tập dữ liệu từ file: {candidate_file}")
+        pipeline.load_benchmark_from_json(candidate_file)
     else:
         try:
             n_cust = int(args.benchmark)

@@ -16,18 +16,22 @@ class DataContractValidator:
     def validate_benchmark_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
         """
         Kiem tra cau truc du lieu dau vao (do TV4 tao ra hoac nhat vao tu file JSON).
+        Ho tro linh hoat ca dinh dang dict lan list cua cac thanh vien trong nhom.
         """
         errors = []
 
         # 1. Kiem tra cac truong cap cao
         if "grid_size" not in data:
-            errors.append("Thieu truong 'grid_size' trong benchmark data.")
+            if "map_size" in data and isinstance(data["map_size"], (int, float)):
+                pass
+            else:
+                errors.append("Thieu truong 'grid_size' trong benchmark data.")
         elif not (isinstance(data["grid_size"], (list, tuple)) and len(data["grid_size"]) == 2):
             errors.append("'grid_size' phai la tuple/list co 2 phan tu (width, height).")
 
         if "nodes" not in data:
             errors.append("Thieu truong 'nodes' trong benchmark data.")
-        elif not isinstance(data["nodes"], dict) or len(data["nodes"]) == 0:
+        elif not isinstance(data["nodes"], (dict, list)) or len(data["nodes"]) == 0:
             errors.append("'nodes' phai la dictionary khac rong.")
 
         if "no_fly_zones" not in data:
@@ -39,22 +43,31 @@ class DataContractValidator:
             return False, errors
 
         # 2. Kiem tra Depot (Node 0)
-        nodes = data["nodes"]
-        # Cho phep key la int hoac string dai dien int
-        int_keys = []
-        for k in nodes.keys():
-            try:
-                int_keys.append(int(k))
-            except ValueError:
-                errors.append(f"Node key '{k}' khong hop le, phai la so nguyen.")
+        raw_nodes = data["nodes"]
+        nodes_dict: Dict[Any, Any] = {}
+        if isinstance(raw_nodes, list):
+            for item in raw_nodes:
+                if isinstance(item, dict) and "id" in item:
+                    try:
+                        nodes_dict[int(item["id"])] = item
+                    except ValueError:
+                        nodes_dict[item["id"]] = item
+                else:
+                    errors.append("Moi phan tu trong danh sach nodes phai la dictionary chua 'id'.")
+        else:
+            for k, v in raw_nodes.items():
+                try:
+                    nodes_dict[int(k)] = v
+                except ValueError:
+                    errors.append(f"Node key '{k}' khong hop le, phai la so nguyen.")
+                    nodes_dict[k] = v
 
-        if 0 not in int_keys:
+        if 0 not in nodes_dict:
             errors.append("Bat buoc phai co Trạm gốc (Depot) voi ID = 0.")
 
         # 3. Kiem tra chi tiet tung Node
         has_delivery = False
-        for k, node in nodes.items():
-            nid = int(k) if isinstance(k, str) and k.isdigit() else k
+        for nid, node in nodes_dict.items():
             if not isinstance(node, dict):
                 errors.append(f"Node {nid} phai la mot dictionary.")
                 continue
