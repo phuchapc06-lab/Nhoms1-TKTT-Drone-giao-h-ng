@@ -165,7 +165,8 @@ uav-routing-project/
 │   ├── GA_TUNING_RESULTS.md           # Báo cáo tinh chỉnh siêu tham số giải thuật di truyền
 │   ├── Mathematical_Model.md          # Mô hình hóa toán học chính thức của bài toán
 │   ├── NGUYEN_PHUC_HA_CONTRIBUTION.md # Báo cáo chi tiết minh chứng đóng góp cá nhân của Tech Lead
-│   └── TV1_CONTRIBUTION.md            # Báo cáo đóng góp cá nhân của Thành viên 1
+│   ├── TV1_CONTRIBUTION.md            # Báo cáo đóng góp cá nhân của Thành viên 1
+│   └── TV3_CONTRIBUTION.md            # Báo cáo đóng góp cá nhân của Thành viên 3 (Năng lượng & Pin)
 ├── src/
 │   ├── algorithms/
 │   │   ├── genetic_algorithm.py       # Giải thuật Di truyền (GA Core Engine - TV1)
