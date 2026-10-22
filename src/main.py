@@ -42,12 +42,18 @@ def parse_args():
     parser.add_argument(
         "--evaluate-all",
         action="store_true",
-        help="Chạy kiểm thử đối sánh đa quy mô, xuất báo cáo EXPERIMENT_RESULTS.md và biểu đồ cột/scalability"
+        help="Chạy kiểm thử đối sánh đa quy mô, xuất báo cáo EXPERIMENT_RESULTS.md và biểu đồ cột/scalability/speedup"
+    )
+    parser.add_argument(
+        "--scales",
+        type=str,
+        default="10,20,30,50",
+        help="Danh sách quy mô điểm giao hàng phân tách bằng dấu phẩy (mặc định: 10,20,30,50)"
     )
     parser.add_argument(
         "--test",
         action="store_true",
-        help="Chạy toàn bộ 10/10 bộ kiểm thử tự động của hệ thống (Master Test Runner)"
+        help="Chạy toàn bộ các bộ kiểm thử tự động của hệ thống (Master Test Runner)"
     )
     parser.add_argument(
         "--no-plot",
@@ -125,10 +131,14 @@ def main():
             csv_dir="data/processed",
             seed=args.seed
         )
-        evaluator.run_multi_scale_benchmark(scales=[10, 20, 30])
-        print(f"\n[✓] Đã hoàn tất thực nghiệm đa quy mô!")
+        scale_list = [int(s.strip()) for s in args.scales.split(",") if s.strip().isdigit()]
+        if not scale_list:
+            scale_list = [10, 20, 30, 50]
+        evaluator.run_multi_scale_benchmark(scales=scale_list, include_speedup=True)
+        print(f"\n[✓] Đã hoàn tất thực nghiệm đối sánh đa quy mô!")
         print(f"[✓] Xem báo cáo chi tiết tại: docs/EXPERIMENT_RESULTS.md")
-        print(f"[✓] Xem biểu đồ cột và Scalability tại: {args.save_dir}/")
+        print(f"[✓] Xem file số liệu CSV tại: data/processed/benchmark_comparison_results.csv")
+        print(f"[✓] Xem bộ biểu đồ tại: {args.save_dir}/ (comparison_bars.png, scalability_analysis.png, speedup_analysis.png)")
         return
 
     # 1. Khởi tạo Pipeline tích hợp

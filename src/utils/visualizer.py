@@ -265,3 +265,56 @@ class UAVVisualizer:
         if show:
             plt.show()
         return fig, (ax1, ax2)
+
+    def plot_speedup_analysis(
+        self,
+        workers: List[int],
+        speedups: List[float],
+        times: Optional[List[float]] = None,
+        title: str = "Đánh giá Tăng tốc Song song hóa A* (Parallel Speedup Analysis)",
+        save_path: Optional[str] = None,
+        show: bool = False
+    ):
+        """
+        Vẽ đồ thị phân tích hệ số tăng tốc Sp = T1 / Tp so sánh với đường tăng tốc tuyến tính lý tưởng (Ideal Linear Speedup).
+        """
+        fig, axes = plt.subplots(1, 2 if times else 1, figsize=(12 if times else 7, 5))
+        ax1 = axes[0] if times else axes
+
+        # Trục 1: Hệ số tăng tốc (Speedup Sp)
+        ax1.plot(workers, speedups, marker="o", color="#1f77b4", linewidth=2.2, label="Thực nghiệm (A* ThreadPool)")
+        ax1.plot(workers, workers, linestyle="--", color="#d62728", alpha=0.7, label="Lý tưởng (Tuyến tính Sp = p)")
+        ax1.set_title("Hệ số Tăng tốc (Speedup factor $S_p$)", fontweight="bold")
+        ax1.set_xlabel("Số lượng Luồng / CPU Cores (p)")
+        ax1.set_ylabel("Speedup ($S_p = T_1 / T_p$)")
+        ax1.set_xticks(workers)
+        ax1.grid(True, linestyle="--", alpha=0.5)
+        ax1.legend()
+
+        for x, y in zip(workers, speedups):
+            ax1.annotate(f"{y:.2f}x", (x, y), textcoords="offset points", xytext=(0, 8), ha="center", fontweight="bold")
+
+        # Trục 2: Thời gian thực thi (nếu có dữ liệu times)
+        if times:
+            ax2 = axes[1]
+            ax2.bar([str(w) for w in workers], times, color="#2ca02c", edgecolor="black", width=0.45)
+            ax2.set_title("Thời gian tính toán A* (giây)", fontweight="bold")
+            ax2.set_xlabel("Số lượng Luồng / CPU Cores (p)")
+            ax2.set_ylabel("Thời gian (s)")
+            ax2.grid(axis="y", linestyle="--", alpha=0.5)
+            for idx, (w, t) in enumerate(zip(workers, times)):
+                ax2.text(idx, t + max(times) * 0.02, f"{t:.4f}s", ha="center", fontweight="bold")
+
+        fig.suptitle(title, fontsize=13, fontweight="bold", y=1.02)
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            try:
+                print(f"[Visualizer] Đã lưu biểu đồ Speedup vào: {save_path}")
+            except UnicodeEncodeError:
+                print(f"[Visualizer] Da luu bieu do Speedup vao: {save_path}")
+
+        if show:
+            plt.show()
+        return fig, axes

@@ -125,9 +125,9 @@ python src/main.py --benchmark 500 --algorithm greedy --no-plot
 python src/main.py --evaluate-all
 ```
 
-### 5.3. Chạy kiểm thử tự động toàn diện (11/11 Test Suites - 100% Passed)
+### 5.3. Chạy kiểm thử tự động toàn diện (12/12 Test Suites - 100% Passed)
 ```bash
-# Lệnh nhanh nhất: Kích hoạt toàn bộ 11 bộ kiểm thử qua CLI chính
+# Lệnh nhanh nhất: Kích hoạt toàn bộ 12 bộ kiểm thử qua CLI chính
 python src/main.py --test
 
 # Hoặc chạy trực tiếp qua Master Test Runner:
@@ -144,7 +144,8 @@ python tests/test_day2_pipeline.py         # Tích hợp: E2E Pipeline & Data Va
 python tests/test_day3_evaluator.py        # Tích hợp: Multi-Scale Evaluator
 python tests/test_day4_integration.py      # Tích hợp: Full System (TV1+TV2+TV3+TV6)
 python tests/test_day5_integration.py      # Tối ưu: Hybrid GA Seeding & Dynamic Fleet
-python tests/test_day1_parallel_ontime.py  # Mới: Song song hóa A* Matrix & On-time Delivery Rate
+python tests/test_day1_parallel_ontime.py  # Ngày 1: Song song hóa A* Matrix & On-time Delivery Rate
+python tests/test_day2_benchmark_speedup.py # Ngày 2: Thực nghiệm Đa quy mô & Biểu đồ Speedup
 ```
 
 ---

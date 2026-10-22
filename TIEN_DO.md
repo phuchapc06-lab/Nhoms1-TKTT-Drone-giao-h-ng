@@ -63,6 +63,20 @@
     - Xây dựng bộ test mới `tests/test_day1_parallel_ontime.py` kiểm thử toàn diện 4 chức năng mới (100% Passed).
     - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **11/11 Suites Passed (100%)**.
 
+### Ngày 2: Thứ Năm (22/10/2026) - Chạy Thực nghiệm Đối sánh Đa quy mô & Đo đạc Hiệu năng
+- **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
+  - **Nâng cấp `BenchmarkEvaluator` & `UAVVisualizer`:**
+    - Bổ sung hàm `run_speedup_benchmark()` đo đạc thực nghiệm hệ số tăng tốc $S_p = T_1 / T_p$ và hiệu suất song song $E_p = S_p / p$ trên các tập benchmark quy mô lớn.
+    - Cài đặt phương thức `plot_speedup_analysis()` trong `UAVVisualizer` xuất tự động biểu đồ khoa học `docs/figures/speedup_analysis.png`.
+  - **Thực thi Đo đạc Thực nghiệm Đa quy mô Toàn diện:**
+    - Điều phối chạy bộ thử nghiệm trên chuỗi quy mô $N = [10, 20, 30, 50]$ điểm giao hàng.
+    - Cập nhật tự động báo cáo nghiên cứu khoa học `docs/EXPERIMENT_RESULTS.md` với đầy đủ 4 chỉ số cốt lõi: Quãng đường (Distance), Tiêu thụ Pin (Energy), Tỷ lệ giao đúng giờ (On-time Delivery Rate: đạt **97.4%**), Thời gian tính toán (Execution Time) và Bảng đo Speedup song song.
+    - Xuất dữ liệu bảng chuẩn xác ra file CSV: `data/processed/benchmark_comparison_results.csv`.
+    - Xuất bộ 3 biểu đồ nghiên cứu khoa học độ phân giải cao: `comparison_bars.png`, `scalability_analysis.png`, `speedup_analysis.png`.
+  - **Bộ Kiểm thử Độc lập Ngày 2:**
+    - Xây dựng bộ kiểm thử mới `tests/test_day2_benchmark_speedup.py` bao quát 4 bài test độc lập (100% Passed).
+    - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **12/12 Suites Passed (100%)**.
+
 ---
 
 ## 📋 Chuẩn Giao kèo dữ liệu (Data Contract)

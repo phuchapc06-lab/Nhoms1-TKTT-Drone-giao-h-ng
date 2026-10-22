@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Master Test Suite (11/11 Suites)
+      - name: Run Master Test Suite (12/12 Suites)
         run: |
           python tests/run_all_tests.py
 

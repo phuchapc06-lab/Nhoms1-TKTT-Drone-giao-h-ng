@@ -1,7 +1,7 @@
 """
 Trình chạy kiểm thử tự động toàn diện (Master Test Runner) cho Đề tài UDRP.
 Phụ trách: Thành viên 5 (Nguyễn Phúc Hà - Tech Lead & System Integrator).
-Tự động kích hoạt toàn bộ 11/11 bộ Unit Test và Integration Test độc lập của 6 thành viên.
+Tự động kích hoạt toàn bộ 12/12 bộ Unit Test và Integration Test độc lập của 6 thành viên.
 """
 import os
 import sys
@@ -12,7 +12,7 @@ import subprocess
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-# Danh sách 11 bộ kiểm thử độc lập
+# Danh sách 12 bộ kiểm thử độc lập
 TEST_SUITES = [
     {
         "file": "tests/test_distance_matrix.py",
@@ -68,6 +68,11 @@ TEST_SUITES = [
         "file": "tests/test_day1_parallel_ontime.py",
         "name": "TV5: Parallel Distance Matrix & On-time Delivery Rate",
         "member": "Tech Lead (Thứ Tư - 21/10)"
+    },
+    {
+        "file": "tests/test_day2_benchmark_speedup.py",
+        "name": "TV5: Multi-Scale Benchmark & Speedup Analysis",
+        "member": "Tech Lead (Thứ Năm - 22/10)"
     },
 ]
 
