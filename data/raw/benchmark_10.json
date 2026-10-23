@@ -2,6 +2,7 @@
     "map_size": 100,
     "num_customers": 10,
     "num_charging": 2,
+    "tw_mode": "mixed",
     "nodes": [
         {
             "id": 0,
@@ -26,9 +27,10 @@
             ],
             "demand": 2.7,
             "tw": [
-                81,
-                243
+                91,
+                141
             ],
+            "tw_type": "tight",
             "service_time": 5
         },
         {
@@ -41,8 +43,9 @@
             "demand": 3.2,
             "tw": [
                 0,
-                64
+                128
             ],
+            "tw_type": "relaxed",
             "service_time": 5
         },
         {
@@ -54,9 +57,10 @@
             ],
             "demand": 1.9,
             "tw": [
-                87,
-                208
+                97,
+                137
             ],
+            "tw_type": "tight",
             "service_time": 5
         },
         {
@@ -66,11 +70,12 @@
                 68,
                 76
             ],
-            "demand": 1.1,
+            "demand": 4.6,
             "tw": [
                 62,
-                231
+                190
             ],
+            "tw_type": "relaxed",
             "service_time": 5
         },
         {
@@ -80,67 +85,72 @@
                 92,
                 71
             ],
-            "demand": 4.5,
+            "demand": 1.5,
             "tw": [
-                343,
-                517
+                197,
+                239
             ],
+            "tw_type": "tight",
             "service_time": 5
         },
         {
             "id": 6,
             "type": "delivery",
             "pos": [
-                56,
-                30
+                67,
+                74
             ],
-            "demand": 1.7,
+            "demand": 1.4,
             "tw": [
-                271,
-                421
+                91,
+                282
             ],
+            "tw_type": "relaxed",
             "service_time": 5
         },
         {
             "id": 7,
             "type": "delivery",
             "pos": [
-                41,
-                36
+                51,
+                10
             ],
-            "demand": 3.3,
+            "demand": 3.9,
             "tw": [
-                216,
-                379
+                298,
+                344
             ],
+            "tw_type": "tight",
             "service_time": 5
         },
         {
             "id": 8,
             "type": "delivery",
             "pos": [
-                74,
-                72
+                51,
+                27
             ],
-            "demand": 3.9,
+            "demand": 2.8,
             "tw": [
-                104,
-                247
+                271,
+                514
             ],
+            "tw_type": "relaxed",
             "service_time": 5
         },
         {
             "id": 9,
             "type": "delivery",
             "pos": [
-                74,
-                77
+                46,
+                4
             ],
-            "demand": 1.7,
+            "demand": 3.5,
             "tw": [
-                63,
-                220
+                54,
+                83
             ],
+            "tw_type": "tight",
             "service_time": 5
         },
         {
@@ -148,21 +158,22 @@
             "type": "delivery",
             "pos": [
                 44,
-                15
+                32
             ],
-            "demand": 3.3,
+            "demand": 3.2,
             "tw": [
-                102,
-                233
+                219,
+                357
             ],
+            "tw_type": "relaxed",
             "service_time": 5
         },
         {
             "id": 11,
             "type": "charging",
             "pos": [
-                19,
-                80
+                37,
+                29
             ],
             "demand": 0.0,
             "tw": [
@@ -175,8 +186,8 @@
             "id": 12,
             "type": "charging",
             "pos": [
-                31,
-                37
+                74,
+                39
             ],
             "demand": 0.0,
             "tw": [
@@ -190,19 +201,19 @@
         {
             "id": 1,
             "bounds": [
-                77,
-                62,
-                87,
-                73
+                35,
+                72,
+                50,
+                82
             ]
         },
         {
             "id": 2,
             "bounds": [
-                72,
-                54,
-                82,
-                65
+                14,
+                23,
+                28,
+                34
             ]
         }
     ]

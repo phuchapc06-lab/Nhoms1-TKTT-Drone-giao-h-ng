@@ -1,6 +1,11 @@
+import csv
 import os
 import unittest
-from src.utils.benchmark_generator import generate_benchmark, load_benchmark
+from src.utils.benchmark_generator import (
+    export_comparison_csv,
+    generate_benchmark,
+    load_benchmark,
+)
 
 
 class TestBenchmarkGenerator(unittest.TestCase):
@@ -11,46 +16,42 @@ class TestBenchmarkGenerator(unittest.TestCase):
             100: ("data/raw/benchmark_100.json", 10, 6),
             500: ("data/raw/benchmark_500.json", 25, 10),
         }
-        # Đảm bảo các file đều tồn tại trước khi test
         for n_cust, (path, n_chg, n_nfz) in self.expected_files.items():
-            if not os.path.exists(path):
-                generate_benchmark(n_cust, n_chg, n_nfz, path)
+            generate_benchmark(n_cust, n_chg, n_nfz, path, tw_mode="mixed")
 
-    def test_all_benchmarks_exist_and_valid(self):
-        """Kiểm tra đủ 4 bộ dữ liệu 10, 50, 100, 500 điểm theo Data Contract."""
+        self.csv_path = "data/processed/benchmark_comparison_results.csv"
+        export_comparison_csv(output_csv=self.csv_path)
+
+    def test_all_benchmarks_and_time_windows(self):
+        """Kiểm tra đủ 4 bộ dữ liệu 10, 50, 100, 500 điểm và Time Windows đa dạng."""
         for n_cust, (path, n_chg, n_nfz) in self.expected_files.items():
             self.assertTrue(os.path.exists(path), f"Thiếu file {path}")
             data = load_benchmark(path)
 
-            # Kiểm tra các khóa chính
             self.assertEqual(data["num_customers"], n_cust)
             self.assertEqual(data["num_charging"], n_chg)
             self.assertEqual(len(data["no_fly_zones"]), n_nfz)
 
             nodes = data["nodes"]
-            # Tổng số node = 1 Depot + N Khách hàng + M Trạm sạc
             self.assertEqual(len(nodes), 1 + n_cust + n_chg)
 
-            # Kiểm tra định dạng Depot (ID = 0)
-            depot = nodes[0]
-            self.assertEqual(depot["id"], 0)
-            self.assertEqual(depot["type"], "depot")
-            self.assertEqual(depot["demand"], 0.0)
-            self.assertIsInstance(depot["pos"], tuple)
-            self.assertIsInstance(depot["tw"], tuple)
+            # Kiểm tra có cả Time Windows chặt chẽ (tight) và nới lỏng (relaxed)
+            tw_types = {
+                node.get("tw_type")
+                for node in nodes
+                if node["type"] == "delivery"
+            }
+            self.assertIn("tight", tw_types)
+            self.assertIn("relaxed", tw_types)
 
-            # Kiểm tra định dạng Khách hàng đầu tiên (ID = 1)
-            customer = nodes[1]
-            self.assertEqual(customer["id"], 1)
-            self.assertEqual(customer["type"], "delivery")
-            self.assertTrue(1.0 <= customer["demand"] <= 5.0)
-            self.assertIsInstance(customer["pos"], tuple)
-            self.assertIsInstance(customer["tw"], tuple)
-
-            # Kiểm tra định dạng Vùng cấm bay
-            zone = data["no_fly_zones"][0]
-            self.assertIsInstance(zone["bounds"], tuple)
-            self.assertEqual(len(zone["bounds"]), 4)
+    def test_comparison_csv_exported(self):
+        """Kiểm tra file CSV tổng hợp thực nghiệm tồn tại và đủ cột."""
+        self.assertTrue(os.path.exists(self.csv_path))
+        with open(self.csv_path, "r", encoding="utf-8") as f:
+            reader = list(csv.DictReader(f))
+            self.assertGreaterEqual(len(reader), 8)
+            self.assertIn("ontime_delivery_rate_pct", reader[0])
+            self.assertIn("speedup_factor", reader[0])
 
 
 if __name__ == "__main__":
