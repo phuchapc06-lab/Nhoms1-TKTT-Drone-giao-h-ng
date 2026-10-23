@@ -1,0 +1,884 @@
+{
+  "name": "UDRP_Benchmark_50",
+  "map_size": 100,
+  "grid_size": [
+    100,
+    100
+  ],
+  "num_customers": 50,
+  "num_charging": 6,
+  "no_fly_zones": [
+    [
+      27,
+      52,
+      9,
+      7
+    ],
+    [
+      16,
+      25,
+      9,
+      9
+    ],
+    [
+      29,
+      31,
+      9,
+      7
+    ],
+    [
+      30,
+      51,
+      5,
+      11
+    ],
+    [
+      83,
+      67,
+      10,
+      6
+    ],
+    [
+      85,
+      9,
+      8,
+      6
+    ],
+    [
+      64,
+      25,
+      8,
+      11
+    ],
+    [
+      76,
+      66,
+      10,
+      11
+    ],
+    [
+      57,
+      14,
+      8,
+      8
+    ],
+    [
+      70,
+      17,
+      8,
+      7
+    ],
+    [
+      69,
+      48,
+      8,
+      8
+    ],
+    [
+      76,
+      69,
+      11,
+      5
+    ]
+  ],
+  "nodes": {
+    "0": {
+      "id": 0,
+      "type": "depot",
+      "pos": [
+        50,
+        50
+      ],
+      "demand": 0.0,
+      "tw": [
+        0.0,
+        1000.0
+      ],
+      "service_time": 0.0
+    },
+    "1": {
+      "id": 1,
+      "type": "delivery",
+      "pos": [
+        72,
+        9
+      ],
+      "demand": 1.2,
+      "tw": [
+        41.6,
+        87.2
+      ],
+      "service_time": 5.0
+    },
+    "2": {
+      "id": 2,
+      "type": "delivery",
+      "pos": [
+        91,
+        60
+      ],
+      "demand": 1.4,
+      "tw": [
+        38.4,
+        94.8
+      ],
+      "service_time": 5.0
+    },
+    "3": {
+      "id": 3,
+      "type": "delivery",
+      "pos": [
+        24,
+        52
+      ],
+      "demand": 1.3,
+      "tw": [
+        40.0,
+        92.3
+      ],
+      "service_time": 5.0
+    },
+    "4": {
+      "id": 4,
+      "type": "delivery",
+      "pos": [
+        6,
+        58
+      ],
+      "demand": 1.5,
+      "tw": [
+        34.6,
+        84.80000000000001
+      ],
+      "service_time": 5.0
+    },
+    "5": {
+      "id": 5,
+      "type": "delivery",
+      "pos": [
+        82,
+        88
+      ],
+      "demand": 1.3,
+      "tw": [
+        45.4,
+        85.0
+      ],
+      "service_time": 5.0
+    },
+    "6": {
+      "id": 6,
+      "type": "delivery",
+      "pos": [
+        95,
+        75
+      ],
+      "demand": 1.1,
+      "tw": [
+        9.6,
+        68.7
+      ],
+      "service_time": 5.0
+    },
+    "7": {
+      "id": 7,
+      "type": "delivery",
+      "pos": [
+        70,
+        67
+      ],
+      "demand": 1.0,
+      "tw": [
+        27.0,
+        62.7
+      ],
+      "service_time": 5.0
+    },
+    "8": {
+      "id": 8,
+      "type": "delivery",
+      "pos": [
+        47,
+        71
+      ],
+      "demand": 1.1,
+      "tw": [
+        37.6,
+        77.9
+      ],
+      "service_time": 5.0
+    },
+    "9": {
+      "id": 9,
+      "type": "delivery",
+      "pos": [
+        47,
+        6
+      ],
+      "demand": 1.4,
+      "tw": [
+        10.4,
+        41.5
+      ],
+      "service_time": 5.0
+    },
+    "10": {
+      "id": 10,
+      "type": "delivery",
+      "pos": [
+        53,
+        22
+      ],
+      "demand": 1.5,
+      "tw": [
+        14.6,
+        59.6
+      ],
+      "service_time": 5.0
+    },
+    "11": {
+      "id": 11,
+      "type": "delivery",
+      "pos": [
+        9,
+        57
+      ],
+      "demand": 1.4,
+      "tw": [
+        13.7,
+        49.900000000000006
+      ],
+      "service_time": 5.0
+    },
+    "12": {
+      "id": 12,
+      "type": "delivery",
+      "pos": [
+        47,
+        40
+      ],
+      "demand": 1.3,
+      "tw": [
+        20.6,
+        64.4
+      ],
+      "service_time": 5.0
+    },
+    "13": {
+      "id": 13,
+      "type": "delivery",
+      "pos": [
+        23,
+        64
+      ],
+      "demand": 1.4,
+      "tw": [
+        12.2,
+        55.3
+      ],
+      "service_time": 5.0
+    },
+    "14": {
+      "id": 14,
+      "type": "delivery",
+      "pos": [
+        78,
+        33
+      ],
+      "demand": 1.2,
+      "tw": [
+        29.9,
+        65.4
+      ],
+      "service_time": 5.0
+    },
+    "15": {
+      "id": 15,
+      "type": "delivery",
+      "pos": [
+        17,
+        71
+      ],
+      "demand": 1.0,
+      "tw": [
+        39.9,
+        89.9
+      ],
+      "service_time": 5.0
+    },
+    "16": {
+      "id": 16,
+      "type": "delivery",
+      "pos": [
+        14,
+        52
+      ],
+      "demand": 1.4,
+      "tw": [
+        26.1,
+        85.2
+      ],
+      "service_time": 5.0
+    },
+    "17": {
+      "id": 17,
+      "type": "delivery",
+      "pos": [
+        76,
+        14
+      ],
+      "demand": 1.2,
+      "tw": [
+        26.8,
+        83.7
+      ],
+      "service_time": 5.0
+    },
+    "18": {
+      "id": 18,
+      "type": "delivery",
+      "pos": [
+        83,
+        54
+      ],
+      "demand": 1.1,
+      "tw": [
+        17.2,
+        51.599999999999994
+      ],
+      "service_time": 5.0
+    },
+    "19": {
+      "id": 19,
+      "type": "delivery",
+      "pos": [
+        50,
+        46
+      ],
+      "demand": 1.5,
+      "tw": [
+        20.4,
+        73.1
+      ],
+      "service_time": 5.0
+    },
+    "20": {
+      "id": 20,
+      "type": "delivery",
+      "pos": [
+        24,
+        73
+      ],
+      "demand": 1.3,
+      "tw": [
+        16.2,
+        60.3
+      ],
+      "service_time": 5.0
+    },
+    "21": {
+      "id": 21,
+      "type": "delivery",
+      "pos": [
+        2,
+        3
+      ],
+      "demand": 1.0,
+      "tw": [
+        44.4,
+        80.3
+      ],
+      "service_time": 5.0
+    },
+    "22": {
+      "id": 22,
+      "type": "delivery",
+      "pos": [
+        90,
+        7
+      ],
+      "demand": 1.3,
+      "tw": [
+        31.9,
+        74.0
+      ],
+      "service_time": 5.0
+    },
+    "23": {
+      "id": 23,
+      "type": "delivery",
+      "pos": [
+        20,
+        43
+      ],
+      "demand": 1.0,
+      "tw": [
+        21.9,
+        75.4
+      ],
+      "service_time": 5.0
+    },
+    "24": {
+      "id": 24,
+      "type": "delivery",
+      "pos": [
+        17,
+        15
+      ],
+      "demand": 1.0,
+      "tw": [
+        33.9,
+        91.3
+      ],
+      "service_time": 5.0
+    },
+    "25": {
+      "id": 25,
+      "type": "delivery",
+      "pos": [
+        19,
+        37
+      ],
+      "demand": 1.0,
+      "tw": [
+        25.7,
+        72.0
+      ],
+      "service_time": 5.0
+    },
+    "26": {
+      "id": 26,
+      "type": "delivery",
+      "pos": [
+        24,
+        65
+      ],
+      "demand": 1.4,
+      "tw": [
+        8.4,
+        47.199999999999996
+      ],
+      "service_time": 5.0
+    },
+    "27": {
+      "id": 27,
+      "type": "delivery",
+      "pos": [
+        63,
+        89
+      ],
+      "demand": 1.2,
+      "tw": [
+        34.6,
+        82.9
+      ],
+      "service_time": 5.0
+    },
+    "28": {
+      "id": 28,
+      "type": "delivery",
+      "pos": [
+        28,
+        21
+      ],
+      "demand": 1.1,
+      "tw": [
+        10.8,
+        56.0
+      ],
+      "service_time": 5.0
+    },
+    "29": {
+      "id": 29,
+      "type": "delivery",
+      "pos": [
+        10,
+        42
+      ],
+      "demand": 1.2,
+      "tw": [
+        31.1,
+        81.7
+      ],
+      "service_time": 5.0
+    },
+    "30": {
+      "id": 30,
+      "type": "delivery",
+      "pos": [
+        17,
+        51
+      ],
+      "demand": 1.3,
+      "tw": [
+        50.0,
+        107.4
+      ],
+      "service_time": 5.0
+    },
+    "31": {
+      "id": 31,
+      "type": "delivery",
+      "pos": [
+        26,
+        22
+      ],
+      "demand": 1.2,
+      "tw": [
+        20.3,
+        57.2
+      ],
+      "service_time": 5.0
+    },
+    "32": {
+      "id": 32,
+      "type": "delivery",
+      "pos": [
+        77,
+        63
+      ],
+      "demand": 1.3,
+      "tw": [
+        46.8,
+        84.5
+      ],
+      "service_time": 5.0
+    },
+    "33": {
+      "id": 33,
+      "type": "delivery",
+      "pos": [
+        23,
+        20
+      ],
+      "demand": 1.3,
+      "tw": [
+        25.4,
+        69.9
+      ],
+      "service_time": 5.0
+    },
+    "34": {
+      "id": 34,
+      "type": "delivery",
+      "pos": [
+        74,
+        65
+      ],
+      "demand": 1.4,
+      "tw": [
+        36.2,
+        67.1
+      ],
+      "service_time": 5.0
+    },
+    "35": {
+      "id": 35,
+      "type": "delivery",
+      "pos": [
+        56,
+        65
+      ],
+      "demand": 1.2,
+      "tw": [
+        31.3,
+        87.2
+      ],
+      "service_time": 5.0
+    },
+    "36": {
+      "id": 36,
+      "type": "delivery",
+      "pos": [
+        25,
+        71
+      ],
+      "demand": 1.3,
+      "tw": [
+        46.8,
+        100.8
+      ],
+      "service_time": 5.0
+    },
+    "37": {
+      "id": 37,
+      "type": "delivery",
+      "pos": [
+        45,
+        22
+      ],
+      "demand": 1.4,
+      "tw": [
+        37.2,
+        85.9
+      ],
+      "service_time": 5.0
+    },
+    "38": {
+      "id": 38,
+      "type": "delivery",
+      "pos": [
+        79,
+        22
+      ],
+      "demand": 1.2,
+      "tw": [
+        37.1,
+        68.4
+      ],
+      "service_time": 5.0
+    },
+    "39": {
+      "id": 39,
+      "type": "delivery",
+      "pos": [
+        37,
+        60
+      ],
+      "demand": 1.0,
+      "tw": [
+        33.6,
+        68.2
+      ],
+      "service_time": 5.0
+    },
+    "40": {
+      "id": 40,
+      "type": "delivery",
+      "pos": [
+        48,
+        61
+      ],
+      "demand": 1.1,
+      "tw": [
+        38.9,
+        84.4
+      ],
+      "service_time": 5.0
+    },
+    "41": {
+      "id": 41,
+      "type": "delivery",
+      "pos": [
+        49,
+        19
+      ],
+      "demand": 1.4,
+      "tw": [
+        35.4,
+        91.4
+      ],
+      "service_time": 5.0
+    },
+    "42": {
+      "id": 42,
+      "type": "delivery",
+      "pos": [
+        83,
+        41
+      ],
+      "demand": 1.4,
+      "tw": [
+        12.7,
+        57.7
+      ],
+      "service_time": 5.0
+    },
+    "43": {
+      "id": 43,
+      "type": "delivery",
+      "pos": [
+        13,
+        52
+      ],
+      "demand": 1.3,
+      "tw": [
+        7.3,
+        46.599999999999994
+      ],
+      "service_time": 5.0
+    },
+    "44": {
+      "id": 44,
+      "type": "delivery",
+      "pos": [
+        74,
+        43
+      ],
+      "demand": 1.4,
+      "tw": [
+        47.7,
+        93.1
+      ],
+      "service_time": 5.0
+    },
+    "45": {
+      "id": 45,
+      "type": "delivery",
+      "pos": [
+        16,
+        13
+      ],
+      "demand": 1.2,
+      "tw": [
+        15.7,
+        72.9
+      ],
+      "service_time": 5.0
+    },
+    "46": {
+      "id": 46,
+      "type": "delivery",
+      "pos": [
+        86,
+        47
+      ],
+      "demand": 1.0,
+      "tw": [
+        29.9,
+        89.19999999999999
+      ],
+      "service_time": 5.0
+    },
+    "47": {
+      "id": 47,
+      "type": "delivery",
+      "pos": [
+        80,
+        5
+      ],
+      "demand": 1.0,
+      "tw": [
+        15.1,
+        72.1
+      ],
+      "service_time": 5.0
+    },
+    "48": {
+      "id": 48,
+      "type": "delivery",
+      "pos": [
+        85,
+        26
+      ],
+      "demand": 1.2,
+      "tw": [
+        48.6,
+        107.7
+      ],
+      "service_time": 5.0
+    },
+    "49": {
+      "id": 49,
+      "type": "delivery",
+      "pos": [
+        44,
+        18
+      ],
+      "demand": 1.2,
+      "tw": [
+        13.5,
+        58.9
+      ],
+      "service_time": 5.0
+    },
+    "50": {
+      "id": 50,
+      "type": "delivery",
+      "pos": [
+        55,
+        39
+      ],
+      "demand": 1.3,
+      "tw": [
+        6.1,
+        57.4
+      ],
+      "service_time": 5.0
+    },
+    "51": {
+      "id": 51,
+      "type": "charging",
+      "pos": [
+        51,
+        63
+      ],
+      "demand": 0.0,
+      "tw": [
+        0.0,
+        1000.0
+      ],
+      "service_time": 15.0
+    },
+    "52": {
+      "id": 52,
+      "type": "charging",
+      "pos": [
+        47,
+        25
+      ],
+      "demand": 0.0,
+      "tw": [
+        0.0,
+        1000.0
+      ],
+      "service_time": 15.0
+    },
+    "53": {
+      "id": 53,
+      "type": "charging",
+      "pos": [
+        22,
+        87
+      ],
+      "demand": 0.0,
+      "tw": [
+        0.0,
+        1000.0
+      ],
+      "service_time": 15.0
+    },
+    "54": {
+      "id": 54,
+      "type": "charging",
+      "pos": [
+        6,
+        44
+      ],
+      "demand": 0.0,
+      "tw": [
+        0.0,
+        1000.0
+      ],
+      "service_time": 15.0
+    },
+    "55": {
+      "id": 55,
+      "type": "charging",
+      "pos": [
+        92,
+        90
+      ],
+      "demand": 0.0,
+      "tw": [
+        0.0,
+        1000.0
+      ],
+      "service_time": 15.0
+    },
+    "56": {
+      "id": 56,
+      "type": "charging",
+      "pos": [
+        85,
+        84
+      ],
+      "demand": 0.0,
+      "tw": [
+        0.0,
+        1000.0
+      ],
+      "service_time": 15.0
+    }
+  }
+}

@@ -46,6 +46,12 @@ class UAVRoutingPipeline:
             alpha=1.0, beta=1.5, gamma=5.0, delta=1000.0,
             drone_speed=drone_speed, drone_capacity=drone_capacity
         )
+        try:
+            from algorithms.energy_manager import EnergyManager
+            self.energy_manager = EnergyManager(battery_capacity=300.0, min_battery_threshold=0.15)
+        except Exception:
+            self.energy_manager = None
+
         self.visualizer = UAVVisualizer(grid_size=grid_size)
         self.validator = DataContractValidator()
 
@@ -67,9 +73,30 @@ class UAVRoutingPipeline:
                 print(f"  - {err}")
             return False
 
-        self.grid_size = tuple(data["grid_size"])
-        self.no_fly_zones = [tuple(z) for z in data["no_fly_zones"]]
-        self.nodes = {int(k): v for k, v in data["nodes"].items()}
+        # 1. Grid size normalization
+        if "grid_size" in data:
+            self.grid_size = tuple(data["grid_size"])
+        elif "map_size" in data:
+            ms = int(data["map_size"])
+            self.grid_size = (ms, ms)
+
+        # 2. No-fly zones normalization
+        self.no_fly_zones = []
+        for z in data.get("no_fly_zones", []):
+            if isinstance(z, dict) and "bounds" in z:
+                b = z["bounds"]
+                w = max(1, int(b[2] - b[0]))
+                h = max(1, int(b[3] - b[1]))
+                self.no_fly_zones.append((int(b[0]), int(b[1]), w, h))
+            elif isinstance(z, (list, tuple)) and len(z) >= 4:
+                self.no_fly_zones.append(tuple(int(v) for v in z[:4]))
+
+        # 3. Nodes normalization
+        raw_nodes = data["nodes"]
+        if isinstance(raw_nodes, list):
+            self.nodes = {int(node["id"]): node for node in raw_nodes if isinstance(node, dict) and "id" in node}
+        else:
+            self.nodes = {int(k): v for k, v in raw_nodes.items()}
         print(f"[Pipeline] Da nap thanh cong benchmark tu {file_path} voi {len(self.nodes)} nodes.")
         return True
 
@@ -136,12 +163,43 @@ class UAVRoutingPipeline:
 
         print(f"[Pipeline] Da khoi tao du lieu mau: Depot + {num_delivery} don giao + {num_charging} tram sac + {num_no_fly} NFZs.")
 
-    def compute_distance_matrix(self, use_astar: bool = True):
+    def compute_distance_matrix(
+        self,
+        use_astar: bool = True,
+        parallel: bool = False,
+        num_workers: Optional[int] = None
+    ):
         """
-        Tinh ma tran khoang cach giua tat ca cac cap diem.
-        Neu use_astar=True, su dung A* de ne cac vung cam bay.
+        Tính ma trận khoảng cách giữa tất cả các cặp điểm.
+        Sử dụng module tối ưu hóa của Thành viên 2 (A* tối ưu + Line-of-sight + Cache).
+        Hỗ trợ tính toán song song (parallel=True).
         """
         num_nodes = len(self.nodes)
+        if use_astar:
+            try:
+                from utils.distance_matrix import compute_distance_matrix as tv2_compute_matrix
+                dist, paths = tv2_compute_matrix(
+                    self.nodes,
+                    self.no_fly_zones,
+                    self.grid_size,
+                    parallel=parallel,
+                    num_workers=num_workers
+                )
+                # Thay thế inf (nếu có điểm rơi vào NFZ) bằng khoảng cách Euclidean phạt để thuật toán GA không bị crash
+                for i in range(num_nodes):
+                    for j in range(num_nodes):
+                        if math.isinf(dist[i, j]):
+                            pi = self.nodes[i]["pos"]
+                            pj = self.nodes[j]["pos"]
+                            dist[i, j] = math.dist(pi, pj) * 2.0
+                self.dist_matrix = dist
+                self.detailed_paths = paths
+                par_str = f" [Song song {num_workers or 'đa'} luồng]" if parallel else ""
+                print(f"[Pipeline] Đã tính ma trận khoảng cách tối ưu (A* Octile + Cache TV2){par_str}: {num_nodes}x{num_nodes}.")
+                return
+            except Exception as e:
+                print(f"[Pipeline] Lưu ý: Dùng fallback A* baseline do: {e}")
+
         self.dist_matrix = np.zeros((num_nodes, num_nodes))
         self.detailed_paths = {}
 
@@ -188,6 +246,13 @@ class UAVRoutingPipeline:
         """
         Thuat toan tham lam Nearest Neighbor co kiem soat can bang tai trong (Baseline cho TV6).
         """
+        try:
+            from algorithms.baseline_greedy import GreedyRouter
+            router = GreedyRouter(self.nodes, self.dist_matrix, self.num_drones, self.drone_capacity)
+            return router.solve()
+        except Exception:
+            pass
+
         deliveries = [k for k, v in self.nodes.items() if v["type"] == "delivery"]
         unvisited = set(deliveries)
         solution = [[0] for _ in range(self.num_drones)]
@@ -229,22 +294,37 @@ class UAVRoutingPipeline:
 
         return solution
 
-    def solve_ga(self, generations: int = 80, pop_size: int = 60) -> Tuple[List[List[int]], List[float]]:
+    def solve_ga(
+        self,
+        generations: Optional[int] = None,
+        pop_size: Optional[int] = None,
+        seed_greedy: bool = True
+    ) -> Tuple[List[List[int]], List[float]]:
         """
         Tích hợp giải thuật Di truyền GA chính thức của Thành viên 1 (GA Core Engine).
-        Có cơ chế dự phòng (fallback) tự động.
+        Hỗ trợ:
+        - Khởi tạo từ lời giải Greedy (Seeding) để đảm bảo GA luôn tốt hơn hoặc bằng Greedy.
+        - Tích hợp EnergyManager để GA chấm điểm sau khi chèn trạm sạc.
+        - Tự động fallback nếu có lỗi.
         """
         try:
             from algorithms.genetic_algorithm import GeneticAlgorithm
-            ga = GeneticAlgorithm(
-                nodes=self.nodes,
-                dist_matrix=self.dist_matrix,
-                num_drones=self.num_drones,
-                fitness_calc=self.fitness_calc,
-                pop_size=pop_size,
-                generations=generations,
-                seed=self.seed
-            )
+            initial_solutions = [self.solve_greedy()] if seed_greedy else None
+            ga_kwargs: Dict[str, Any] = {
+                "nodes": self.nodes,
+                "dist_matrix": self.dist_matrix,
+                "num_drones": self.num_drones,
+                "fitness_calc": self.fitness_calc,
+                "energy_manager": self.energy_manager,
+                "seed": self.seed,
+                "initial_solutions": initial_solutions
+            }
+            if pop_size is not None:
+                ga_kwargs["pop_size"] = pop_size
+            if generations is not None:
+                ga_kwargs["generations"] = generations
+
+            ga = GeneticAlgorithm(**ga_kwargs)
             solution, best_fitness, history_fitness = ga.evolve()
             # Bổ sung tuyến trống nếu số lượng UAV sử dụng ít hơn num_drones
             while len(solution) < self.num_drones:
@@ -346,19 +426,29 @@ class UAVRoutingPipeline:
         self,
         algorithm: str = "ga",
         save_figure_dir: Optional[str] = "docs/figures",
-        show_plot: bool = False
+        show_plot: bool = False,
+        generations: Optional[int] = None,
+        pop_size: Optional[int] = None,
+        seed_greedy: bool = True,
+        parallel: bool = False,
+        num_workers: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Chay toan trinh mot thuat toan, danh gia va xuat ket qua.
+        Hỗ trợ tính toán song song (parallel=True).
         """
         if self.dist_matrix is None:
-            self.compute_distance_matrix(use_astar=True)
+            self.compute_distance_matrix(use_astar=True, parallel=parallel, num_workers=num_workers)
 
         start_time = time.time()
         history_fitness = None
 
         if algorithm.lower() == "ga":
-            solution, history_fitness = self.solve_ga(generations=80, pop_size=50)
+            solution, history_fitness = self.solve_ga(
+                generations=generations,
+                pop_size=pop_size,
+                seed_greedy=seed_greedy
+            )
             algo_name = "Thuật toán Di truyền (A* + Genetic Algorithm)"
         elif algorithm.lower() == "greedy":
             solution = self.solve_greedy()
@@ -366,10 +456,30 @@ class UAVRoutingPipeline:
         else:
             raise ValueError(f"Khong ho tro thuat toan: {algorithm}")
 
+        # 1. Áp dụng tối ưu cục bộ 2-Opt (TV6) để gỡ các giao cắt đường bay
+        try:
+            from algorithms.local_search import apply_2opt_to_solution
+            solution = apply_2opt_to_solution(solution, self.dist_matrix)
+        except Exception:
+            pass
+
+        # 2. Kiểm tra Pin & Tự động chèn trạm sạc khi pin < ngưỡng an toàn (TV3)
+        if self.energy_manager:
+            repaired = []
+            for r in solution:
+                rep_r, _, _ = self.energy_manager.repair_route_with_charging(
+                    r, self.dist_matrix, self.nodes
+                )
+                repaired.append(rep_r)
+            solution = repaired
+
         exec_time = time.time() - start_time
-        fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(solution, self.dist_matrix, self.nodes)
+        fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(
+            solution, self.dist_matrix, self.nodes, self.energy_manager
+        )
         is_valid, validation_errors = self.validator.validate_solution(solution, self.nodes, self.drone_capacity)
 
+        on_time_rate = float(breakdown.get("on_time_rate", 100.0))
         res = {
             "algorithm": algo_name,
             "exec_time_sec": round(exec_time, 4),
@@ -378,6 +488,9 @@ class UAVRoutingPipeline:
             "distance": round(breakdown["distance"], 2),
             "energy": round(breakdown["energy"], 2),
             "tw_penalty": round(breakdown["tw_penalty"], 2),
+            "on_time_rate": round(on_time_rate, 2),
+            "on_time_deliveries": int(breakdown.get("on_time_deliveries", 0)),
+            "total_deliveries": int(breakdown.get("total_deliveries", 0)),
             "is_valid": is_valid,
             "errors": validation_errors,
             "solution": solution
@@ -399,45 +512,80 @@ class UAVRoutingPipeline:
 
             if history_fitness:
                 conv_path = os.path.join(save_figure_dir, f"convergence_{algorithm.lower()}.png")
+                num_deliv = len([k for k, v in self.nodes.items() if v.get("type") == "delivery"])
                 self.visualizer.plot_convergence_curve(
                     history_fitness=history_fitness,
-                    title=f"Đường cong Hội tụ GA ({len(self.nodes)-1} điểm)",
+                    title=f"Đường cong Hội tụ GA ({num_deliv} điểm giao hàng)",
                     save_path=conv_path,
                     show=show_plot
                 )
 
         return res
 
-    def compare_algorithms(self, save_dir: Optional[str] = "docs/figures", show_plot: bool = False):
+    def compare_algorithms(
+        self,
+        save_dir: Optional[str] = "docs/figures",
+        show_plot: bool = False,
+        generations: Optional[int] = None,
+        pop_size: Optional[int] = None,
+        seed_greedy: bool = True,
+        parallel: bool = False,
+        num_workers: Optional[int] = None
+    ):
         """
         Chay so sanh truc tiep giua A* + GA va A* + Greedy Baseline.
-        In bang Markdown so sanh chuyen nghiep.
+        In bang Markdown so sanh chuyen nghiep bao gom chi so On-time Delivery Rate.
         """
         print("\n=======================================================")
         print("  BẮT ĐẦU CHẠY THỬ NGHIỆM ĐỐI SÁNH (BENCHMARK COMPARISON) ")
         print("=======================================================")
 
-        res_greedy = self.run_experiment(algorithm="greedy", save_figure_dir=save_dir, show_plot=False)
-        res_ga = self.run_experiment(algorithm="ga", save_figure_dir=save_dir, show_plot=show_plot)
+        res_greedy = self.run_experiment(
+            algorithm="greedy",
+            save_figure_dir=save_dir,
+            show_plot=False,
+            parallel=parallel,
+            num_workers=num_workers
+        )
+        res_ga = self.run_experiment(
+            algorithm="ga",
+            save_figure_dir=save_dir,
+            show_plot=show_plot,
+            generations=generations,
+            pop_size=pop_size,
+            seed_greedy=seed_greedy,
+            parallel=parallel,
+            num_workers=num_workers
+        )
 
         # In bang so sanh
-        dist_diff = ((res_greedy["distance"] - res_ga["distance"]) / res_greedy["distance"]) * 100
-        cost_diff = ((res_greedy["total_cost"] - res_ga["total_cost"]) / res_greedy["total_cost"]) * 100
+        dist_diff = ((res_greedy["distance"] - res_ga["distance"]) / res_greedy["distance"]) * 100 if res_greedy["distance"] > 0 else 0.0
+        cost_diff = ((res_greedy["total_cost"] - res_ga["total_cost"]) / res_greedy["total_cost"]) * 100 if res_greedy["total_cost"] > 0 else 0.0
 
-        print("\n" + "="*70)
-        print("BẢNG KẾT QUẢ SO SÁNH HIỆU NĂNG THỰC NGHIỆM:")
-        print("="*70)
-        print(f"{'Chỉ số đánh giá':<28} | {'A* + Greedy (Baseline)':<20} | {'A* + GA (Đề xuất)':<18}")
-        print("-" * 70)
-        print(f"{'Tổng quãng đường (km)':<28} | {res_greedy['distance']:<20.2f} | {res_ga['distance']:<18.2f}")
-        print(f"{'Năng lượng tiêu hao (Wh)':<28} | {res_greedy['energy']:<20.2f} | {res_ga['energy']:<18.2f}")
-        print(f"{'Phạt trễ hẹn (Time Window)':<28} | {res_greedy['tw_penalty']:<20.2f} | {res_ga['tw_penalty']:<18.2f}")
-        print(f"{'Tổng chi phí (Total Cost)':<28} | {res_greedy['total_cost']:<20.2f} | {res_ga['total_cost']:<18.2f}")
-        print(f"{'Điểm thích nghi (Fitness)':<28} | {res_greedy['fitness']:<20.4f} | {res_ga['fitness']:<18.4f}")
-        print(f"{'Thời gian tính toán (s)':<28} | {res_greedy['exec_time_sec']:<20.4f} | {res_ga['exec_time_sec']:<18.4f}")
-        print(f"{'Hợp lệ ràng buộc (Valid)':<28} | {str(res_greedy['is_valid']):<20} | {str(res_ga['is_valid']):<18}")
-        print("=" * 70)
+        print("\n" + "="*75)
+        print("BẢNG KẾT QUẢ SO SÁNH HIỆU NĂNG THỰC NGHIỆM (UAV ROUTING):")
+        print("="*75)
+        print(f"{'Chỉ số đánh giá':<28} | {'A* + Greedy (Baseline)':<22} | {'A* + GA (Đề xuất)':<20}")
+        print("-" * 75)
+        print(f"{'Tổng quãng đường (km)':<28} | {res_greedy['distance']:<22.2f} | {res_ga['distance']:<20.2f}")
+        print(f"{'Năng lượng tiêu hao (Wh)':<28} | {res_greedy['energy']:<22.2f} | {res_ga['energy']:<20.2f}")
+        print(f"{'Phạt trễ hẹn (Time Window)':<28} | {res_greedy['tw_penalty']:<22.2f} | {res_ga['tw_penalty']:<20.2f}")
+        print(f"{'Tỷ lệ đúng giờ (On-time)':<28} | {res_greedy['on_time_rate']:<21.1f}% | {res_ga['on_time_rate']:<19.1f}%")
+        print(f"{'Tổng chi phí (Total Cost)':<28} | {res_greedy['total_cost']:<22.2f} | {res_ga['total_cost']:<20.2f}")
+        print(f"{'Điểm thích nghi (Fitness)':<28} | {res_greedy['fitness']:<22.4f} | {res_ga['fitness']:<20.4f}")
+        print(f"{'Thời gian tính toán (s)':<28} | {res_greedy['exec_time_sec']:<22.4f} | {res_ga['exec_time_sec']:<20.4f}")
+        print(f"{'Hợp lệ ràng buộc (Valid)':<28} | {str(res_greedy['is_valid']):<22} | {str(res_ga['is_valid']):<20}")
+        print("=" * 75)
         print(f"-> KẾT LUẬN: A* + GA tiết kiệm được {cost_diff:.1f}% chi phí tổng và rút ngắn {dist_diff:.1f}% quãng đường so với Greedy Baseline!")
-        print("=" * 70 + "\n")
+        print("=" * 75 + "\n")
 
         return res_greedy, res_ga
+
+    def measure_parallel_speedup(self, workers_list: Optional[List[int]] = None) -> Dict[str, Any]:
+        """
+        Đo đạc tốc độ tăng tốc (Speedup Sp = T1 / Tp) khi song song hóa A* Distance Matrix.
+        """
+        from utils.distance_matrix import benchmark_distance_matrix_speedup
+        return benchmark_distance_matrix_speedup(
+            self.nodes, self.no_fly_zones, self.grid_size, workers_list=workers_list
+        )

@@ -26,14 +26,33 @@ class GeneticAlgorithm:
         num_drones: int,
         fitness_calc: Optional[FitnessCalculator] = None,
         energy_manager: Optional[Any] = None,
-        pop_size: int = 80,
-        generations: int = 300,
+        # Mặc định chọn từ thực nghiệm tinh chỉnh trên benchmark 10 & 50 điểm (src/utils/ga_tuning.py)
+        pop_size: int = 100,
+        generations: int = 2000,
         crossover_rate: float = 0.9,
-        mutation_rate: float = 0.2,
+        mutation_rate: float = 0.5,
         tournament_size: int = 3,
         elitism: int = 2,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        initial_solutions: Optional[List[List[List[int]]]] = None,
+        constraint_penalty_factor: float = 100.0
     ):
+        """
+        Khởi tạo GA cho đội bay K Drone.
+            nodes: các node theo Data Contract; chỉ node type == "delivery" được đưa vào chromosome.
+            dist_matrix: ma trận khoảng cách né vùng cấm bay (TV2).
+            num_drones: số Drone K = số tuyến tối đa; chromosome có K-1 vách ngăn.
+            fitness_calc: FitnessCalculator của TV5 (None -> tạo bản mặc định).
+            energy_manager: EnergyManager của TV3; nếu có, tuyến được chấm điểm sau khi chèn trạm sạc.
+            pop_size, generations: kích thước quần thể và số thế hệ.
+            crossover_rate, mutation_rate: xác suất lai ghép OX và đột biến Swap.
+            tournament_size: số cá thể mỗi lần chọn lọc Tournament.
+            elitism: số cá thể tốt nhất được giữ nguyên sang thế hệ sau.
+            seed: seed của bộ sinh số ngẫu nhiên riêng (cùng seed -> cùng kết quả).
+            initial_solutions: lời giải có sẵn (vd. Greedy của TV6) đưa vào quần thể ban đầu.
+            constraint_penalty_factor: hệ số nhân phần phạt quá tải / cạn pin khi chọn lọc (1 -> fitness gốc của TV5).
+        Báo ValueError nếu tham số không hợp lệ hoặc không có điểm giao hàng nào.
+        """
         if num_drones < 1:
             raise ValueError("num_drones phải >= 1")
         if pop_size < 2:
@@ -46,6 +65,8 @@ class GeneticAlgorithm:
             raise ValueError("tournament_size phải >= 1")
         if not (0 <= elitism < pop_size):
             raise ValueError("elitism phải nằm trong [0, pop_size)")
+        if constraint_penalty_factor < 1.0:
+            raise ValueError("constraint_penalty_factor phải >= 1")
 
         self.nodes = nodes
         self.dist_matrix = dist_matrix
@@ -58,6 +79,10 @@ class GeneticAlgorithm:
         self.mutation_rate = mutation_rate
         self.tournament_size = tournament_size
         self.elitism = elitism
+        # Hệ số nhân phần phạt vi phạm ràng buộc cứng (quá tải / cạn pin) khi chọn lọc.
+        # delta của FitnessCalculator quá nhẹ ở quy mô lớn: quá tải 0.05 kg chỉ bị phạt 50 trong cost ~10^4,
+        # nên GA chấp nhận vi phạm nhỏ. Đặt 1.0 để dùng nguyên fitness của TV5.
+        self.constraint_penalty_factor = constraint_penalty_factor
 
         # Bộ sinh số ngẫu nhiên riêng -> không ảnh hưởng random toàn cục của module khác
         self.rng = random.Random(seed)
@@ -72,6 +97,10 @@ class GeneticAlgorithm:
         # K-1 vách ngăn: -1, -2, ..., -(K-1)
         self.separators: List[int] = list(range(-1, -num_drones, -1))
         self.genes: List[int] = self.customers + self.separators
+        self._customer_set = set(self.customers)
+
+        # Lời giải có sẵn (vd. Greedy của TV6) được đưa vào quần thể ban đầu; mã hóa ngay để báo lỗi sớm
+        self.initial_chromosomes: List[Chromosome] = [self.encode(s) for s in (initial_solutions or [])]
 
         # Cache: tuple(chromosome) -> (fitness, cost, breakdown)
         self._cache: Dict[Tuple[int, ...], Tuple[float, float, Dict[str, float]]] = {}
@@ -106,6 +135,27 @@ class GeneticAlgorithm:
             solution.append([DEPOT_ID] + current + [DEPOT_ID])
         return solution
 
+    def encode(self, solution: List[List[int]]) -> Chromosome:
+        """
+        Mã hóa ngược lời giải (danh sách tuyến) thành chromosome; bỏ qua Depot và trạm sạc trong tuyến.
+        Ví dụ (K = 3): [[0, 3, 1, 0], [0, 4, 0]]  ->  [3, 1, -1, 4, -2]
+        """
+        routes = [[nid for nid in route if nid in self._customer_set] for route in solution]
+        routes = [route for route in routes if route]
+        if len(routes) > self.num_drones:
+            raise ValueError(f"Lời giải có {len(routes)} tuyến, nhiều hơn số Drone K = {self.num_drones}")
+
+        chromosome: Chromosome = []
+        for idx, route in enumerate(routes):
+            if idx > 0:
+                chromosome.append(self.separators[idx - 1])
+            chromosome.extend(route)
+        chromosome.extend(self.separators[max(len(routes) - 1, 0):])  # vách ngăn còn thừa -> tuyến rỗng ở cuối
+
+        if sorted(chromosome) != sorted(self.genes):
+            raise ValueError("Lời giải phải giao mỗi điểm giao hàng đúng 1 lần")
+        return chromosome
+
     def _random_chromosome(self) -> Chromosome:
         """Sinh một cá thể ngẫu nhiên: xáo trộn khách hàng và vách ngăn."""
         chromosome = self.genes[:]
@@ -113,8 +163,10 @@ class GeneticAlgorithm:
         return chromosome
 
     def _init_population(self) -> List[Chromosome]:
-        """Khởi tạo quần thể ban đầu gồm pop_size cá thể ngẫu nhiên."""
-        return [self._random_chromosome() for _ in range(self.pop_size)]
+        """Khởi tạo quần thể: các lời giải có sẵn (nếu có) + cá thể ngẫu nhiên cho đủ pop_size."""
+        population = [c[:] for c in self.initial_chromosomes[:self.pop_size]]
+        population += [self._random_chromosome() for _ in range(self.pop_size - len(population))]
+        return population
 
     # ------------------------------------------------------------------
     # 2. Đánh giá độ thích nghi
@@ -123,15 +175,29 @@ class GeneticAlgorithm:
         """
         Đánh giá cá thể bằng FitnessCalculator của TV5.
         Trả về (fitness, cost, breakdown); kết quả được cache theo chromosome.
+        - cost, breakdown: đúng giá trị của TV5 (dùng để báo cáo).
+        - fitness: dùng để chọn lọc, = 1000 / (cost + (factor - 1) * cap_penalty + 1);
+          bằng fitness của TV5 khi lời giải thỏa ràng buộc hoặc factor = 1.
+        Có EnergyManager (TV3): chấm điểm tuyến SAU khi chèn trạm sạc, giống bước pipeline làm sau GA.
+        Nếu không, tuyến cần ghé trạm sạc bị phạt như cạn pin dù pipeline sẽ sửa được.
         """
         key = tuple(chromosome)
         if key not in self._cache:
-            self._cache[key] = self.fitness_calc.evaluate_solution(
-                self.decode(chromosome), self.dist_matrix, self.nodes, self.energy_manager
+            solution = self.decode(chromosome)
+            if self.energy_manager is not None and hasattr(self.energy_manager, "repair_route_with_charging"):
+                solution = [
+                    self.energy_manager.repair_route_with_charging(route, self.dist_matrix, self.nodes)[0]
+                    for route in solution
+                ]
+            _, cost, breakdown = self.fitness_calc.evaluate_solution(
+                solution, self.dist_matrix, self.nodes, self.energy_manager
             )
+            penalized = cost + (self.constraint_penalty_factor - 1.0) * breakdown["cap_penalty"]
+            self._cache[key] = (1000.0 / (penalized + 1.0), cost, breakdown)
         return self._cache[key]
 
     def _fitness(self, chromosome: Chromosome) -> float:
+        """Fitness dùng để chọn lọc (đã nhân hệ số phạt vi phạm), xem _evaluate."""
         return self._evaluate(chromosome)[0]
 
     # ------------------------------------------------------------------
@@ -204,9 +270,10 @@ class GeneticAlgorithm:
         Chạy GA qua `generations` thế hệ (thế hệ đầu tiên là quần thể khởi tạo ngẫu nhiên).
         Trả về:
             - best_solution: lời giải tốt nhất theo Data Contract
-            - best_fitness: độ thích nghi của lời giải đó
+            - best_fitness: độ thích nghi (dùng để chọn lọc, xem _evaluate) của lời giải đó
             - history: best fitness tốt nhất tính đến mỗi thế hệ (dùng cho UAVVisualizer.plot_convergence_curve)
-        Sau khi chạy có thêm các thuộc tính: best_chromosome, best_cost, best_breakdown, runtime (giây).
+        Sau khi chạy có thêm các thuộc tính: best_chromosome, best_cost, best_breakdown (giá trị của TV5),
+        runtime (giây). best_solution chưa chứa trạm sạc; khi có EnergyManager, best_cost là cost sau khi chèn trạm sạc.
         """
         start = time.perf_counter()
         best_chromosome: Optional[Chromosome] = None
