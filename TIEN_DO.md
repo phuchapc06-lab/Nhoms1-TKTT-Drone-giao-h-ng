@@ -5,7 +5,7 @@
 
 ## 🎯 Tổng quan Tiến độ Sprint 1 Tuần (7 Ngày)
 - **Mục tiêu:** Xây dựng hệ thống hoàn chỉnh giải bài toán Định tuyến Đội bay UAV giao hàng trong đô thị né vùng cấm bay, quản lý pin và tối ưu hóa đa mục tiêu.
-- **Trạng thái:** **HOÀN THÀNH 100% TOÀN DỰ ÁN (SẴN SÀNG CHO TUẦN LÀM VIỆC MỚI)**.
+- **Trạng thái:** Đã hoàn thành các nhiệm vụ tính đến Thứ Sáu (23/10/2026).
 
 ---
 
@@ -45,7 +45,7 @@
 
 ---
 
-## 🚀 SPRINT NÉN 4 NGÀY (GỘP TUẦN 5 & TUẦN 6): THỰC NGHIỆM ĐA QUY MÔ, SONG SONG HÓA & ĐỘ PHỨC TẠP
+## 📅 TIẾN ĐỘ TUẦN 5 & TUẦN 6 (Cập nhật đến Thứ Sáu - 23/10/2026)
 
 ### Ngày 1: Thứ Tư (21/10/2026) - Thiết kế Song song hóa & Đo lường Tỷ lệ Giao hàng Đúng giờ
 - **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
@@ -76,6 +76,21 @@
   - **Bộ Kiểm thử Độc lập Ngày 2:**
     - Xây dựng bộ kiểm thử mới `tests/test_day2_benchmark_speedup.py` bao quát 4 bài test độc lập (100% Passed).
     - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **12/12 Suites Passed (100%)**.
+
+### Ngày 3: Thứ Sáu (23/10/2026) - Phân tích Độ phức tạp Thuật toán & Chứng minh Tính đúng đắn
+- **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
+  - **Tổng hợp Báo cáo Toán học Chuyên sâu (`docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md`):**
+    - Phân tích chi tiết độ phức tạp thời gian và không gian cho 5 module: A* Pathfinding $O(WH \log(WH))$, GA Meta-heuristic $O(G \cdot P \cdot (N+K))$, Greedy Baseline $O(K \cdot N^2)$, 2-Opt Local Search $O(I \cdot N^2)$, Energy Manager $O(N \cdot C)$, và toàn trình Pipeline tích hợp.
+    - Chứng minh toán học nghiêm ngặt 5 định lý cốt lõi:
+      1. *Định lý 1:* Tính tối ưu toàn cục và nhất quán của hàm Heuristic Octile trong thuật toán A*.
+      2. *Định lý 2:* Tính bất biến bảo toàn lời giải hợp lệ của toán tử Order Crossover (OX) và Swap Mutation trong GA.
+      3. *Định lý 3:* Tính đơn điệu không tăng quãng đường và tính dừng hữu hạn bước của 2-Opt ($d_{new} \le d_{old}$).
+      4. *Định lý 4:* Tính dừng không lặp vô hạn và tính an toàn pin tuyệt đối ($E_{battery} \ge 15\%$) của Energy Manager.
+      5. *Định lý 5:* Tính không suy giảm nghiệm của cơ chế Hybrid GA Seeding ($Cost_{GA} \le Cost_{Greedy}$).
+    - Đối chiếu thực nghiệm: Đo đạc thời gian chạy đa quy mô khẳng định tính phù hợp tuyệt đối giữa thực tế và lý thuyết Big-$O$.
+  - **Bộ Kiểm thử Độc lập Ngày 3:**
+    - Xây dựng bộ kiểm thử mới `tests/test_day3_complexity_correctness.py` kiểm chứng toàn diện 5 định lý toán học (100% Passed).
+    - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **13/13 Suites Passed (100%)**.
 
 ---
 

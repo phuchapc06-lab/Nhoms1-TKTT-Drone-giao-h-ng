@@ -3,7 +3,7 @@
 
 [![Python CI - UAV Routing Tests](https://github.com/phuchapc06-lab/Nhoms1-TKTT-Drone-giao-h-ng/actions/workflows/python-tests.yml/badge.svg)](https://github.com/phuchapc06-lab/Nhoms1-TKTT-Drone-giao-h-ng/actions)
 ![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
-![Tests](https://img.shields.io/badge/tests-10%2F10%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-13%2F13%20passing-brightgreen)
 ![Status](https://img.shields.io/badge/status-production%20ready-success)
 
 > **Đồ án môn học:** Phân tích & Thiết kế Thuật toán — Trường Đại học Kinh tế Quốc dân (NEU)  
@@ -125,9 +125,9 @@ python src/main.py --benchmark 500 --algorithm greedy --no-plot
 python src/main.py --evaluate-all
 ```
 
-### 5.3. Chạy kiểm thử tự động toàn diện (12/12 Test Suites - 100% Passed)
+### 5.3. Chạy kiểm thử tự động toàn diện (13/13 Test Suites - 100% Passed)
 ```bash
-# Lệnh nhanh nhất: Kích hoạt toàn bộ 12 bộ kiểm thử qua CLI chính
+# Lệnh nhanh nhất: Kích hoạt toàn bộ 13 bộ kiểm thử qua CLI chính
 python src/main.py --test
 
 # Hoặc chạy trực tiếp qua Master Test Runner:
@@ -146,6 +146,7 @@ python tests/test_day4_integration.py      # Tích hợp: Full System (TV1+TV2+T
 python tests/test_day5_integration.py      # Tối ưu: Hybrid GA Seeding & Dynamic Fleet
 python tests/test_day1_parallel_ontime.py  # Ngày 1: Song song hóa A* Matrix & On-time Delivery Rate
 python tests/test_day2_benchmark_speedup.py # Ngày 2: Thực nghiệm Đa quy mô & Biểu đồ Speedup
+python tests/test_day3_complexity_correctness.py # Ngày 3: Chứng minh Toán học & Tính đúng đắn
 ```
 
 ---
@@ -204,8 +205,11 @@ uav-routing-project/
 
 ---
 
-## 🏆 7. KẾT LUẬN & NGHIỆM THU DỰ ÁN
+## 📌 7. TIẾN ĐỘ THỰC HIỆN
 
-- **Trạng thái Sprint 1 tuần:** **Hoàn thành 100%** đúng tiến độ đề ra vào **Chủ Nhật (18/10/2026)**.
-- Toàn bộ 6 module của 6 thành viên đã được ghép nối hoàn chỉnh, kiểm thử tự động toàn diện (10/10 test suites - 100% Passed) và nghiệm thu đạt chuẩn chất lượng nghiên cứu khoa học.
-- Tự động hóa CI/CD với GitHub Actions, sẵn sàng 100% cho tuần làm việc mới.
+- Hệ thống đã ghép nối hoàn chỉnh các module: tìm đường tránh vật cản A*, giải thuật di truyền GA, quản lý pin và trạm sạc, thuật toán tham lam đối sánh và tối ưu cục bộ 2-Opt.
+- Tiến độ tuần này (cập nhật đến Thứ Sáu - 23/10/2026):
+  - Tối ưu tính toán song song ma trận khoảng cách $A^*$ và kiểm tra khung giờ giao hàng (Time Windows).
+  - Chạy thực nghiệm đối sánh trên các tập dữ liệu đa quy mô, ghi nhận số liệu và xuất biểu đồ phân tích.
+  - Hoàn thiện báo cáo phân tích độ phức tạp thuật toán và các chứng minh toán học (`docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md`).
+  - Toàn bộ 13 bộ kiểm thử đều đã chạy đạt (`python tests/run_all_tests.py` hoặc `python src/main.py --test`).

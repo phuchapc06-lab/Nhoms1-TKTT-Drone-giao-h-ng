@@ -1,14 +1,14 @@
 # BÁO CÁO KẾT QUẢ THỬ NGHIỆM ĐỐI SÁNH HIỆU NĂNG THUẬT TOÁN
 ## Đề tài: Tối ưu hóa định tuyến cho mạng giao vận Drone (UDRP)
-**Ngày tạo:** 2026-10-22 18:34:16
+**Ngày tạo:** 2026-10-23 21:04:49
 **Phụ trách thực nghiệm:** Nguyễn Phúc Hà (Tech Lead - Thành viên 5)
 
 ### 1. Bảng số liệu tổng hợp đa quy mô (Multi-scale Experimental Results)
 
 | Quy mô (N) | Số Drone (K) | Quãng đường Greedy (km) | Quãng đường GA (km) | Tiết kiệm Quãng đường (%) | Tiết kiệm Năng lượng (%) | Đúng giờ Greedy (%) | Đúng giờ GA (%) | Tiết kiệm Chi phí (%) | Thời gian Greedy (s) | Thời gian GA (s) |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 6 | 3 | 328.09 | 283.32 | **13.65%** | **14.42%** | 83.3% | 100.0% | **18.66%** | 0.0001 | 0.2317 |
-| 10 | 3 | 377.25 | 296.41 | **21.43%** | **12.21%** | 80.0% | 100.0% | **17.95%** | 0.0001 | 0.5019 |
+| 6 | 3 | 328.09 | 283.32 | **13.65%** | **14.42%** | 83.3% | 100.0% | **18.66%** | 0.0001 | 0.2358 |
+| 10 | 3 | 377.25 | 296.41 | **21.43%** | **12.21%** | 80.0% | 100.0% | **17.95%** | 0.0001 | 0.4869 |
 
 ### 2. Bảng đo đạc Tăng tốc Song song hóa Ma trận Khoảng cách ($A^*$ Parallel Speedup)
 
@@ -16,9 +16,9 @@
 
 | Số Luồng / CPU Cores (p) | Thời gian tính toán (s) | Hệ số Tăng tốc ($S_p = T_1 / T_p$) | Hiệu suất Song song ($E_p = S_p / p$) |
 | :---: | :---: | :---: | :---: |
-| 1 Core(s) | 0.0400s | **1.00x** | 100.0% |
-| 2 Core(s) | 0.0445s | **0.90x** | 45.0% |
-| 4 Core(s) | 0.0463s | **0.86x** | 21.5% |
+| 1 Core(s) | 0.0399s | **1.00x** | 100.0% |
+| 2 Core(s) | 0.0446s | **0.90x** | 45.0% |
+| 4 Core(s) | 0.0461s | **0.87x** | 21.8% |
 
 ### 3. Đánh giá An toàn Pin & Trạm sạc (Battery Feasibility - TV3)
 - **100% Chuyến bay An toàn:** Mọi lời giải của GA và Greedy đều vượt qua bộ kiểm soát pin `EnergyManager`. Pin không bao giờ giảm xuống dưới ngưỡng an toàn 15% ($E_{battery} \ge E_{safe}$).

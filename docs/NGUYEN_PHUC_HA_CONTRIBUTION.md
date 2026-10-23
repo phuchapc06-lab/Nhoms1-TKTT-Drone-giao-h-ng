@@ -158,7 +158,8 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
   10. `tests/test_day5_integration.py`: Hybrid GA Seeding & Dynamic Fleet Sizing Ngày 5 (TV5).
   11. `tests/test_day1_parallel_ontime.py`: Song song hóa A* Distance Matrix & Chỉ số Giao đúng giờ Ngày 1 (Thứ Tư - 21/10).
   12. `tests/test_day2_benchmark_speedup.py`: Thực nghiệm Đa quy mô Toàn diện & Biểu đồ Speedup Ngày 2 (Thứ Năm - 22/10).
-- **Kết quả kiểm thử:** **12/12 Passed (100%)**.
+  13. `tests/test_day3_complexity_correctness.py`: Chứng minh Toán học, Tính đúng đắn & Độ phức tạp Ngày 3 (Thứ Sáu - 23/10).
+- **Kết quả kiểm thử:** **13/13 Passed (100%)**.
 
 ---
 
@@ -193,6 +194,21 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 
 ---
 
+### 13. Đóng góp trong Sprint Nén 4 Ngày (Gộp Tuần 5 & 6) - Thứ Sáu (23/10/2026)
+- **Soạn thảo và Ban hành Báo cáo Toán học Chuyên sâu (`docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md`):**
+  - Tổng hợp và phân tích chi tiết độ phức tạp Thời gian (Time) và Không gian (Space) cho toàn bộ 5 module và toàn trình End-to-End Pipeline.
+  - Xây dựng và chứng minh toán học chặt chẽ 5 Định lý cốt lõi:
+    1. *Định lý 1:* Tính tối ưu toàn cục (Admissibility & Consistency) của hàm Heuristic Octile trong thuật toán A*.
+    2. *Định lý 2:* Tính bất biến bảo toàn lời giải hợp lệ (100% khách hàng phục vụ đúng 1 lần) của toán tử Order Crossover (OX) và Swap Mutation.
+    3. *Định lý 3:* Tính đơn điệu không tăng quãng đường và tính dừng hữu hạn bước của 2-Opt Local Search ($d_{new} \le d_{old}$).
+    4. *Định lý 4:* Tính dừng không lặp vô hạn và tính an toàn pin tuyệt đối ($E_{battery} \ge E_{safe} = 15\%$) của thuật toán tự động chèn trạm sạc.
+    5. *Định lý 5:* Tính không suy giảm nghiệm của cơ chế Hybrid GA Seeding ($Cost_{GA} \le Cost_{Greedy}$).
+- **Xây dựng Bộ Kiểm thử Thứ Sáu (Ngày 3):**
+  - Tạo `tests/test_day3_complexity_correctness.py` kiểm chứng thực nghiệm độc lập toàn bộ 5 định lý toán học (100% Passed).
+  - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **13/13 Suites Passed (100%)**.
+
+---
+
 ## 📂 DANH MỤC CÁC FILE ĐÃ TẠO VÀ ĐÓNG GÓP
 | STT | Tên File | Chức năng | Trạng thái |
 | :---: | :--- | :--- | :--- | :---: |
@@ -207,19 +223,21 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 | 9 | `src/algorithms/energy_manager.py` | Module quản lý pin, tiêu hao tải trọng và tự động chèn trạm sạc | Hoàn thành |
 | 10 | `src/algorithms/local_search.py` | Module tối ưu cục bộ 2-Opt gỡ giao cắt đường bay đa UAV | Hoàn thành |
 | 11 | `src/algorithms/baseline_greedy.py` | Module thuật toán tham lam Nearest Neighbor định tuyến đối sánh | Hoàn thành |
-| 12 | `tests/run_all_tests.py` | Master Test Runner tự động chạy toàn bộ 12 test suites | Hoàn thành |
+| 12 | `tests/run_all_tests.py` | Master Test Runner tự động chạy toàn bộ 13 test suites | Hoàn thành |
 | 13 | `tests/test_day1_parallel_ontime.py` | Unit Test kiểm thử Song song hóa A* Matrix & Chỉ số Giao đúng giờ Ngày 1 (Thứ 4) | Passed 100% |
 | 14 | `tests/test_day2_benchmark_speedup.py` | Unit Test kiểm thử Đối sánh Đa quy mô & Biểu đồ Speedup Ngày 2 (Thứ 5) | Passed 100% |
-| 15 | `tests/test_energy_manager.py` | Unit Test độc lập cho EnergyManager (TV3) | Passed 100% |
-| 16 | `tests/test_benchmark_generator.py` | Unit Test độc lập cho BenchmarkGenerator (TV4) | Passed 100% |
-| 17 | `tests/test_greedy_baseline.py` | Unit Test độc lập cho GreedyRouter & 2-Opt (TV6) | Passed 100% |
-| 18 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
-| 19 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
-| 20 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
-| 21 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
-| 22 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
-| 23 | `.github/workflows/python-tests.yml` | Workflow GitHub Actions CI/CD kiểm thử tự động | Hoàn thành |
-| 24 | `README.md` | Tài liệu dự án hoàn chỉnh, kiến trúc, phân công nhóm, kết quả thực nghiệm | Hoàn thành |
-| 25 | `TIEN_DO.md` | Tài liệu quản lý tiến độ và nghiệm thu toàn dự án Sprint 1 tuần & Sprint 4 ngày | Hoàn thành |
-| 26 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
-| 27 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+| 15 | `tests/test_day3_complexity_correctness.py` | Unit Test kiểm chứng 5 Định lý Toán học & Tính đúng đắn Ngày 3 (Thứ 6) | Passed 100% |
+| 16 | `tests/test_energy_manager.py` | Unit Test độc lập cho EnergyManager (TV3) | Passed 100% |
+| 17 | `tests/test_benchmark_generator.py` | Unit Test độc lập cho BenchmarkGenerator (TV4) | Passed 100% |
+| 18 | `tests/test_greedy_baseline.py` | Unit Test độc lập cho GreedyRouter & 2-Opt (TV6) | Passed 100% |
+| 19 | `tests/test_member5.py` | Unit Test độc lập cho FitnessCalculator và UAVVisualizer | Passed 100% |
+| 20 | `tests/test_day2_pipeline.py` | Unit Test tích hợp toàn diện cho Pipeline và Validator | Passed 100% |
+| 21 | `tests/test_day3_evaluator.py` | Unit Test cho BenchmarkEvaluator và xuất báo cáo khoa học | Passed 100% |
+| 22 | `tests/test_day4_integration.py` | Unit Test kiểm thử Cột mốc Tích hợp Hệ thống Ngày 4 | Passed 100% |
+| 23 | `tests/test_day5_integration.py` | Unit Test kiểm thử Cột mốc Tối ưu & Tinh chỉnh Nâng cao Ngày 5 | Passed 100% |
+| 24 | `.github/workflows/python-tests.yml` | Workflow GitHub Actions CI/CD kiểm thử tự động | Hoàn thành |
+| 25 | `README.md` | Tài liệu dự án hoàn chỉnh, kiến trúc, phân công nhóm, kết quả thực nghiệm | Hoàn thành |
+| 26 | `TIEN_DO.md` | Tài liệu quản lý tiến độ và nghiệm thu toàn dự án Sprint 1 tuần & Sprint 4 ngày | Hoàn thành |
+| 27 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
+| 28 | `docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md` | Báo cáo khoa học phân tích độ phức tạp & chứng minh tính đúng đắn | Hoàn thành |
+| 29 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
