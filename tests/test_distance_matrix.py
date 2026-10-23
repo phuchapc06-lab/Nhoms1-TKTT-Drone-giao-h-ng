@@ -58,3 +58,20 @@ def test_cache_is_reused(tmp_path):
     t = time.time()
     D2, _ = compute_distance_matrix(nodes, [], (50, 50), cache_path=cp)
     assert time.time() - t < 0.5 and np.allclose(D1, D2)
+    
+def test_parallel_equals_sequential():
+    pts = [(5, 5), (40, 5), (40, 40), (5, 40), (25, 5), (25, 45), (45, 25), (3, 22)]
+    nodes = make_nodes(pts)
+    nfz = [(15, 15, 10, 10), (30, 20, 5, 15)]
+    D1, P1 = compute_distance_matrix(nodes, nfz, (50, 50), cache_path=None, workers=1)
+    D2, P2 = compute_distance_matrix(nodes, nfz, (50, 50), cache_path=None, workers=2)
+    assert np.allclose(D1, D2) and P1 == P2
+
+
+def test_stats_recorded():
+    import sys
+    dm = sys.modules[compute_distance_matrix.__module__]   # đúng module đang được test
+    nodes = make_nodes([(5, 5), (40, 5), (40, 40), (5, 40)])
+    compute_distance_matrix(nodes, [(15, 15, 10, 10)], (50, 50), cache_path=None)
+    s = dm.LAST_STATS
+    assert s["pairs"] == 6 and s["los_pairs"] + s["astar_pairs"] == 6
