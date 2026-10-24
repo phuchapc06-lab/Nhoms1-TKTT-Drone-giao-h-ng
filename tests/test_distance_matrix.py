@@ -9,6 +9,7 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from models.optimized_astar import build_grid, astar
+from utils import distance_matrix as dm
 from utils.distance_matrix import compute_distance_matrix
 
 
@@ -18,14 +19,15 @@ def make_nodes(points):
             for i, p in enumerate(points)}
 
 
+# ---------- 6 test gốc ----------
 def test_straight_line_without_obstacle():
     grid = build_grid(50, 50, [])
     d, path = astar(grid, (0, 0), (30, 40))
-    assert abs(d - 50.0) < 1e-6          # smoothing -> duong thang dung bang Euclid
+    assert abs(d - 50.0) < 1e-6
 
 
 def test_detour_around_nfz_is_longer():
-    grid = build_grid(50, 50, [(20, 0, 10, 40)])   # buc tuong chan
+    grid = build_grid(50, 50, [(20, 0, 10, 40)])
     d, path = astar(grid, (10, 20), (40, 20))
     assert d > 30 and math.isfinite(d)
 
@@ -36,7 +38,7 @@ def test_boundary_is_inclusive():
 
 
 def test_unreachable_returns_inf():
-    grid = build_grid(50, 50, [(0, 25, 50, 2)])     # tuong kin ngang ban do
+    grid = build_grid(50, 50, [(0, 25, 50, 2)])
     d, path = astar(grid, (5, 5), (5, 45))
     assert d == math.inf and path is None
 
@@ -60,26 +62,29 @@ def test_cache_is_reused(tmp_path):
     assert time.time() - t < 0.5 and np.allclose(D1, D2)
 
 
-if __name__ == "__main__":
-    from pathlib import Path
-    import tempfile
+# ---------- 3 test mới ----------
+def test_parallel_equals_sequential():
+    pts = [(5, 5), (40, 5), (40, 40), (5, 40), (25, 5), (25, 45), (45, 25), (3, 22)]
+    nodes = make_nodes(pts)
+    nfz = [(15, 15, 10, 10), (30, 20, 5, 15)]
+    D1, P1 = compute_distance_matrix(nodes, nfz, (50, 50), cache_path=None, workers=1)
+    D2, P2 = compute_distance_matrix(nodes, nfz, (50, 50), cache_path=None, workers=2)
+    assert np.allclose(D1, D2) and P1 == P2
 
-    if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8')
 
-    print("=== KIỂM THỬ ĐỘC LẬP MODULE THÀNH VIÊN 2 (A* TỐI ƯU & MA TRẬN) ===")
-    test_straight_line_without_obstacle()
-    print("-> test_straight_line_without_obstacle: PASSED")
-    test_detour_around_nfz_is_longer()
-    print("-> test_detour_around_nfz_is_longer: PASSED")
-    test_boundary_is_inclusive()
-    print("-> test_boundary_is_inclusive: PASSED")
-    test_unreachable_returns_inf()
-    print("-> test_unreachable_returns_inf: PASSED")
-    with tempfile.TemporaryDirectory() as td:
-        tpath = Path(td)
-        test_matrix_properties(tpath)
-        print("-> test_matrix_properties: PASSED")
-        test_cache_is_reused(tpath)
-        print("-> test_cache_is_reused: PASSED")
-    print("\n=== TẤT CẢ UNIT TEST CHO THÀNH VIÊN 2 ĐÃ VƯỢT QUA XUẤT SẮC! ===")
+def test_parallel_flag_compat():
+    """Giao diện parallel/num_workers của TV5 (main.py, pipeline.py) vẫn chạy."""
+    pts = [(5, 5), (40, 5), (40, 40), (5, 40), (25, 5)]
+    nodes = make_nodes(pts)
+    nfz = [(15, 15, 10, 10)]
+    D1, _ = compute_distance_matrix(nodes, nfz, (50, 50), cache_path=None)
+    D2, _ = compute_distance_matrix(nodes, nfz, (50, 50), cache_path=None,
+                                    parallel=True, num_workers=2)
+    assert np.allclose(D1, D2)
+
+
+def test_stats_recorded():
+    nodes = make_nodes([(5, 5), (40, 5), (40, 40), (5, 40)])
+    compute_distance_matrix(nodes, [(15, 15, 10, 10)], (50, 50), cache_path=None)
+    s = dm.LAST_STATS
+    assert s["pairs"] == 6 and s["los_pairs"] + s["astar_pairs"] == 6
