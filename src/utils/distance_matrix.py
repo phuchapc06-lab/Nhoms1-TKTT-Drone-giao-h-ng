@@ -1,23 +1,15 @@
-<<<<<<< HEAD
-"""Tính trước ma trận khoảng cách né vùng cấm bay + cache ra file .pkl."""
-=======
 """Tính trước ma trận khoảng cách né vùng cấm bay + cache ra file .pkl.
-Hỗ trợ tính toán song song (Parallel Computing) qua ThreadPoolExecutor / ProcessPool.
-Phụ trách: Thành viên 2 (A* Engine) & Thành viên 5 (Tích hợp & Song song hóa).
+Song song hóa bằng ProcessPoolExecutor (A* là CPU-bound nên thread bị GIL chặn).
+Phụ trách: Thành viên 2 (A* Engine) & Thành viên 5 (Tích hợp).
 """
->>>>>>> develop
 import hashlib
 import math
 import os
 import pickle
-<<<<<<< HEAD
-from concurrent.futures import ProcessPoolExecutor
-import numpy as np
-
-=======
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from typing import Dict, List, Tuple, Any, Optional
 import numpy as np
 
@@ -25,7 +17,6 @@ import numpy as np
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
->>>>>>> develop
 # Hỗ trợ cả 2 kiểu import (repo dùng sys.path trỏ vào src/)
 try:
     from models.optimized_astar import build_grid, astar, line_of_sight
@@ -36,39 +27,31 @@ except ImportError:
 DEFAULT_CACHE = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", "..", "data", "processed", "distance_matrix.pkl"))
 
-<<<<<<< HEAD
-# Thống kê của lần tính gần nhất (None nếu lần gọi cuối nạp từ cache):
-# {"pairs", "los_pairs", "astar_pairs", "los_ratio", "workers"}
+# Thống kê lần tính gần nhất (None nếu lần gọi cuối nạp từ cache):
+# {"pairs", "los_pairs", "astar_pairs", "los_ratio", "workers", "elapsed_s"}
 LAST_STATS = None
 
-# Dữ liệu dùng chung trong mỗi tiến trình (nạp 1 lần qua initializer,
-# tránh pickle grid cho từng tác vụ)
+# Dữ liệu dùng chung trong mỗi tiến trình (nạp 1 lần qua initializer)
 _G = {}
 
-=======
->>>>>>> develop
 
 def _snap(pos):
     return (int(round(pos[0])), int(round(pos[1])))
 
 
 def _fingerprint(nodes, no_fly_zones, grid_size):
-<<<<<<< HEAD
-    # workers KHÔNG đưa vào key vì kết quả không phụ thuộc số nhân
-=======
->>>>>>> develop
+    # số workers KHÔNG đưa vào key vì kết quả không phụ thuộc số nhân
     raw = repr(sorted((i, tuple(n["pos"])) for i, n in nodes.items()))
-    raw += repr(list(no_fly_zones)) + repr(tuple(grid_size))
+    raw += repr([tuple(z) for z in no_fly_zones]) + repr(tuple(grid_size))
     return hashlib.md5(raw.encode()).hexdigest()
 
 
-<<<<<<< HEAD
 def _init_worker(grid, pts):
     _G["grid"], _G["pts"] = grid, pts
 
 
 def _solve_row(i):
-    """Tính mọi cặp (i, j) với j > i. Hàm ở mức module để pickle được trên Windows/macOS."""
+    """Tính mọi cặp (i, j) với j > i. Ở mức module để pickle được trên Windows."""
     grid, pts = _G["grid"], _G["pts"]
     out = []
     n_los = n_astar = 0
@@ -83,18 +66,11 @@ def _solve_row(i):
     return i, out, n_los, n_astar
 
 
-def compute_distance_matrix(nodes, no_fly_zones, grid_size,
-                            cache_path=DEFAULT_CACHE, force=False, workers=1):
-    """
-    nodes: dict id -> node (đúng Data Contract), id phải liên tục 0..M-1
-    grid_size: (width, height)
-    workers: số tiến trình (1 = tuần tự). Dùng >1 thì script gọi phải bọc
-             trong `if __name__ == "__main__":`.
-    Trả về (dist_matrix: np.ndarray MxM, detailed_paths: {(i, j): [(x, y), ...]})
-    Cặp không tới được: dist = inf, không có trong detailed_paths.
-    """
-    global LAST_STATS
-=======
+def _run_sequential(grid, pts):
+    _init_worker(grid, pts)
+    return [_solve_row(i) for i in range(len(pts))]
+
+
 def compute_distance_matrix(
     nodes: Dict[int, Dict[str, Any]],
     no_fly_zones: List[Tuple[int, int, int, int]],
@@ -102,27 +78,40 @@ def compute_distance_matrix(
     cache_path: Optional[str] = DEFAULT_CACHE,
     force: bool = False,
     parallel: bool = False,
-    num_workers: Optional[int] = None
+    num_workers: Optional[int] = None,
+    workers: Optional[int] = None,
 ) -> Tuple[np.ndarray, Dict[Tuple[int, int], List[Tuple[int, int]]]]:
     """
     nodes: dict id -> node (đúng Data Contract), id phải liên tục 0..M-1
+           (key dạng chuỗi "0","1",... từ file JSON sẽ tự được đổi sang int)
     grid_size: (width, height)
-    parallel: True để bật tính song song đa luồng cho các cặp điểm (i, j)
-    num_workers: số worker luồng xử lý song song (mặc định: min(cpu_count, 8))
+    Số tiến trình (chọn 1 trong 2 cách, `workers` được ưu tiên):
+      - workers=k: dùng k tiến trình (1 = tuần tự)
+      - parallel=True [, num_workers=k]: tương thích với main.py/pipeline.py của TV5;
+        mặc định k = min(cpu_count, 8)
+    Dùng >1 tiến trình thì script gọi nên bọc trong `if __name__ == "__main__":`.
+    Nếu không sinh được tiến trình con, hàm tự chạy tuần tự (kết quả không đổi).
     Trả về (dist_matrix: np.ndarray MxM, detailed_paths: {(i, j): [(x, y), ...]})
     Cặp không tới được: dist = inf, không có trong detailed_paths.
     """
->>>>>>> develop
+    global LAST_STATS
+    t_start = time.perf_counter()
+
+    if workers is None:
+        if parallel:
+            workers = num_workers if num_workers and num_workers > 0 \
+                else min(os.cpu_count() or 4, 8)
+        else:
+            workers = 1
+
+    nodes = {int(k): v for k, v in nodes.items()}     # chuẩn hóa key về int
     key = _fingerprint(nodes, no_fly_zones, grid_size)
 
     if not force and cache_path and os.path.exists(cache_path):
         with open(cache_path, "rb") as f:
             data = pickle.load(f)
         if data.get("key") == key:          # dữ liệu không đổi -> dùng lại
-<<<<<<< HEAD
             LAST_STATS = None
-=======
->>>>>>> develop
             return data["dist_matrix"], data["detailed_paths"]
 
     ids = sorted(nodes)
@@ -135,86 +124,54 @@ def compute_distance_matrix(
         if grid[p]:
             print(f"[CẢNH BÁO] node {i} tại {p} nằm trong vùng cấm bay -> khoảng cách = inf")
 
-<<<<<<< HEAD
-    # ---- Tính các hàng (tuần tự hoặc song song) ----
+    # ---- Tính các hàng (tuần tự hoặc song song theo tiến trình) ----
+    workers = max(1, min(workers, n))
     if workers <= 1 or n < 3:
-        _init_worker(grid, pts)
-        results = [_solve_row(i) for i in range(n)]
+        workers = 1
+        results = _run_sequential(grid, pts)
     else:
-        # chunksize=1: hàng i nhỏ có nhiều cặp hơn -> chia nhỏ để cân tải
-        with ProcessPoolExecutor(max_workers=workers,
-                                 initializer=_init_worker,
-                                 initargs=(grid, pts)) as ex:
-            results = list(ex.map(_solve_row, range(n), chunksize=1))
+        try:
+            # chunksize=1: hàng i nhỏ có nhiều cặp hơn -> chia nhỏ để cân tải
+            with ProcessPoolExecutor(max_workers=workers,
+                                     initializer=_init_worker,
+                                     initargs=(grid, pts)) as ex:
+                results = list(ex.map(_solve_row, range(n), chunksize=1))
+        except (BrokenProcessPool, OSError, RuntimeError) as e:
+            print(f"[CẢNH BÁO] Không chạy được đa tiến trình ({type(e).__name__}). "
+                  f"Chuyển sang chạy tuần tự. Hãy bọc lệnh gọi trong "
+                  f"`if __name__ == \"__main__\":`.")
+            workers = 1
+            results = _run_sequential(grid, pts)
 
     # ---- Gộp kết quả ----
     dist = np.zeros((n, n))
-    paths = {}
+    paths: Dict[Tuple[int, int], List[Tuple[int, int]]] = {}
     total_los = total_astar = 0
     for i, row, n_los, n_astar in results:
         total_los += n_los
         total_astar += n_astar
         for j, d, p in row:
-=======
-    dist = np.zeros((n, n))
-    paths: Dict[Tuple[int, int], List[Tuple[int, int]]] = {}
-
-    pairs = [(i, j) for i in range(n) for j in range(i + 1, n)]
-
-    def _eval_pair(pair: Tuple[int, int]):
-        i, j = pair
-        pi, pj = pts[i], pts[j]
-        if line_of_sight(grid, pi, pj):
-            return i, j, math.dist(pi, pj), [pi, pj]
-        else:
-            d, p = astar(grid, pi, pj)
-            return i, j, d, p
-
-    if parallel and len(pairs) > 1:
-        workers = num_workers if num_workers and num_workers > 0 else min(os.cpu_count() or 4, 8)
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(_eval_pair, pairs)
-            for i, j, d, p in results:
-                dist[i, j] = dist[j, i] = d
-                if p is not None:
-                    paths[(i, j)] = p
-                    paths[(j, i)] = p[::-1]
-    else:
-        for pair in pairs:
-            i, j, d, p = _eval_pair(pair)
->>>>>>> develop
             dist[i, j] = dist[j, i] = d
             if p is not None:
                 paths[(i, j)] = p
                 paths[(j, i)] = p[::-1]
 
-<<<<<<< HEAD
-    pairs = total_los + total_astar
+    n_pairs = total_los + total_astar
     LAST_STATS = {
-        "pairs": pairs,
+        "pairs": n_pairs,
         "los_pairs": total_los,
         "astar_pairs": total_astar,
-        "los_ratio": (total_los / pairs) if pairs else 1.0,
+        "los_ratio": (total_los / n_pairs) if n_pairs else 1.0,
         "workers": workers,
+        "elapsed_s": time.perf_counter() - t_start,
     }
 
-=======
->>>>>>> develop
     if cache_path:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         with open(cache_path, "wb") as f:
             pickle.dump({"key": key, "dist_matrix": dist, "detailed_paths": paths}, f)
     return dist, paths
 
-<<<<<<< HEAD
-#Use
-"""
-from src.utils import distance_matrix as dm
-
-D, P = dm.compute_distance_matrix(nodes, nfz, grid_size, workers=4)
-print(dm.LAST_STATS)   # lấy tỷ lệ LOS cho bảng thực nghiệm
-"""
-=======
 
 def benchmark_distance_matrix_speedup(
     nodes: Dict[int, Dict[str, Any]],
@@ -223,7 +180,8 @@ def benchmark_distance_matrix_speedup(
     workers_list: Optional[List[int]] = None
 ) -> Dict[str, Any]:
     """
-    Đo đạc thời gian tính toán và hệ số tăng tốc (Speedup Sp = T1 / Tp) khi song song hóa A*.
+    Đo thời gian và hệ số tăng tốc (Speedup Sp = T1 / Tp) khi song song hóa A*.
+    (Giữ nguyên giao diện do TV5 đã tích hợp.)
     """
     if workers_list is None:
         workers_list = [1, 2, 4]
@@ -233,10 +191,8 @@ def benchmark_distance_matrix_speedup(
 
     for w in workers_list:
         t0 = time.perf_counter()
-        if w == 1:
-            compute_distance_matrix(nodes, no_fly_zones, grid_size, cache_path=None, force=True, parallel=False)
-        else:
-            compute_distance_matrix(nodes, no_fly_zones, grid_size, cache_path=None, force=True, parallel=True, num_workers=w)
+        compute_distance_matrix(nodes, no_fly_zones, grid_size,
+                                cache_path=None, force=True, workers=w)
         times[w] = time.perf_counter() - t0
 
     t1 = times.get(1, 1e-6)
@@ -245,4 +201,3 @@ def benchmark_distance_matrix_speedup(
     results["times_sec"] = {f"{w}_workers": round(times[w], 4) for w in workers_list}
     results["speedup"] = {f"S_{w}": speedups[w] for w in workers_list}
     return results
->>>>>>> develop
