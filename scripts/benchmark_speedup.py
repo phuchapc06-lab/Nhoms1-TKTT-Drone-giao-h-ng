@@ -11,9 +11,8 @@ sys.path.insert(0, os.path.join(ROOT, "src"))
 
 from utils import distance_matrix as dm   # cùng kiểu import với các file trong src/
 
-SIZES = [10, 50, 100, 500]
+SIZES = [10, 50, 100]
 WORKERS = [1, 2, 4]
-
 
 def repeats_for(n_delivery):
     return 1 if n_delivery >= 500 else 3     # 500 điểm chạy rất lâu
