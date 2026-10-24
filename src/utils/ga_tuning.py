@@ -6,6 +6,7 @@ Chạy từ thư mục repo (cần data/raw/benchmark_{N}.json, sinh bằng src/
     python src/utils/ga_tuning.py sweep --scales 10 50 --seeds 10
     python src/utils/ga_tuning.py sweep --scales 50 --pop-sizes 100 --generations 500 1000 2000 --seed-greedy
     python src/utils/ga_tuning.py compare --scales 10 50 100 --seeds 5 --pop-size 100 --mutation-rate 0.2 --generations 1000
+    python src/utils/ga_tuning.py compare --scales 500 --seeds 3 --pop-size 100 --mutation-rate 0.5 --generations 2000 --workers 8 --only-proposed
     python src/utils/ga_tuning.py speedup --scales 10 100 500 --workers 1 2 4 8 --generations 200
 """
 import argparse
@@ -128,11 +129,25 @@ def format_sweep(rows: List[Dict[str, Any]], reference_cost: Optional[float] = N
 # ----------------------------------------------------------------------
 # 2. So sánh với Greedy qua luồng đầy đủ của pipeline
 # ----------------------------------------------------------------------
+def battery_infeasible_routes(pipeline: UAVRoutingPipeline, solution: List[List[int]], repair: bool = False) -> int:
+    """
+    Số tuyến thiếu pin theo EnergyManager (đúng phép kiểm tra FitnessCalculator dùng để phạt 1000 / tuyến).
+    repair=True: chèn trạm sạc trước khi kiểm tra (cho lời giải chưa qua bước sửa pin của pipeline).
+    Validator của TV5 không kiểm tra pin nên phải đếm riêng.
+    """
+    em, dist, nodes = pipeline.energy_manager, pipeline.dist_matrix, pipeline.nodes
+    if repair:
+        return sum(not em.repair_route_with_charging(r, dist, nodes)[2] for r in solution)
+    return sum(not em.calculate_route_energy(r, dist, nodes)[1] for r in solution)
+
+
 def run_greedy(pipeline: UAVRoutingPipeline) -> Dict[str, Any]:
     """Greedy qua đúng luồng run_experiment của pipeline (Greedy -> 2-Opt -> chèn trạm sạc -> chấm điểm)."""
     # solve_greedy có fallback âm thầm khi GreedyRouter lỗi -> bảo đảm đang đo đúng thuật toán của TV6
     assert pipeline.solve_greedy() == greedy_solution(pipeline), "Pipeline không dùng GreedyRouter của TV6"
-    return pipeline.run_experiment("greedy", save_figure_dir=None)
+    result = pipeline.run_experiment("greedy", save_figure_dir=None)
+    result["battery_infeasible"] = battery_infeasible_routes(pipeline, result["solution"])
+    return result
 
 
 def run_ga(
@@ -142,7 +157,11 @@ def run_ga(
     """
     GA qua đúng luồng run_experiment của pipeline (GA -> 2-Opt -> chèn trạm sạc -> chấm điểm có EnergyManager).
     Thời gian đo bởi run_experiment gồm cả bước chạy Greedy để khởi tạo (nếu seed_greedy).
+    Kết quả có thêm khóa "history" (đường hội tụ của GA) để kiểm tra số thế hệ đã đủ chưa, và số tuyến
+    thiếu pin của lời giải GA trước 2-Opt ("battery_infeasible_ga") lẫn sau cả luồng ("battery_infeasible").
     """
+    captured = {}
+
     def solve_ga(*_args, **_kwargs):  # bỏ qua tham số run_experiment truyền vào: cấu hình lấy từ ga_params
         ga = GeneticAlgorithm(
             pipeline.nodes, pipeline.dist_matrix, pipeline.num_drones,
@@ -152,29 +171,57 @@ def run_ga(
             seed=seed, **ga_params
         )
         solution, _, history = ga.evolve()
+        captured["history"], captured["solution"] = history, solution
         return solution, history
 
     pipeline.solve_ga = solve_ga
     try:
-        return pipeline.run_experiment("ga", save_figure_dir=None)
+        result = pipeline.run_experiment("ga", save_figure_dir=None)
     finally:
         del pipeline.solve_ga  # trả lại phương thức gốc của class
+    result["history"] = captured["history"]
+    result["battery_infeasible_ga"] = battery_infeasible_routes(pipeline, captured["solution"], repair=True)
+    result["battery_infeasible"] = battery_infeasible_routes(pipeline, result["solution"])
+    return result
 
 
-def compare(pipeline: UAVRoutingPipeline, seeds: List[int], ga_params: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
-    """Thang cải tiến: mỗi dòng GA thêm đúng một thay đổi so với dòng trên."""
-    tuned = ", ".join(f"{k}={v}" for k, v in ga_params.items())
-    return {
-        "Greedy + 2-Opt (baseline)": [run_greedy(pipeline)],  # tất định -> chạy 1 lần
-        "GA - cấu hình cũ của pipeline (80 thế hệ, 50 cá thể, mutation_rate=0.2, phạt gốc của TV5)": [
+def compare(
+    pipeline: UAVRoutingPipeline, seeds: List[int], ga_params: Dict[str, Any], full: bool = True
+) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Thang cải tiến: mỗi dòng GA thêm đúng một thay đổi so với dòng trên.
+    full=False: chỉ chạy Greedy và GA đề xuất (dòng cuối), dùng cho quy mô lớn (500 điểm).
+    Cấu hình cũ luôn chạy tuần tự (không nhận num_workers trong ga_params).
+    """
+    tuned = ", ".join(f"{k}={v}" for k, v in ga_params.items() if k != "num_workers")
+    variants = {"Greedy + 2-Opt (baseline)": [run_greedy(pipeline)]}  # tất định -> chạy 1 lần
+    if full:
+        variants["GA - cấu hình cũ của pipeline (80 thế hệ, 50 cá thể, mutation_rate=0.2, phạt gốc của TV5)"] = [
             run_ga(pipeline, s, PIPELINE_OLD_PARAMS) for s in seeds
-        ],
-        f"GA - tham số tinh chỉnh ({tuned})": [run_ga(pipeline, s, ga_params) for s in seeds],
-        "GA - tinh chỉnh + EnergyManager": [run_ga(pipeline, s, ga_params, use_energy_manager=True) for s in seeds],
-        "GA - tinh chỉnh + EnergyManager + khởi tạo từ Greedy": [
-            run_ga(pipeline, s, ga_params, use_energy_manager=True, seed_greedy=True) for s in seeds
-        ],
-    }
+        ]
+        variants[f"GA - tham số tinh chỉnh ({tuned})"] = [run_ga(pipeline, s, ga_params) for s in seeds]
+        variants["GA - tinh chỉnh + EnergyManager"] = [
+            run_ga(pipeline, s, ga_params, use_energy_manager=True) for s in seeds
+        ]
+    variants["GA - tinh chỉnh + EnergyManager + khởi tạo từ Greedy"] = [
+        run_ga(pipeline, s, ga_params, use_energy_manager=True, seed_greedy=True) for s in seeds
+    ]
+    return variants
+
+
+def format_convergence(results: List[Dict[str, Any]]) -> str:
+    """
+    Cost theo thước đo chọn lọc của GA (có nhân phạt, chưa 2-Opt) ở 1/2, 3/4 và cuối số thế hệ,
+    trung bình qua các seed: nếu 1/4 số thế hệ cuối còn giảm đáng kể thì nên chạy thêm thế hệ.
+    """
+    generations = len(results[0]["history"])
+    marks = [generations // 2, 3 * generations // 4, generations]
+    means = [statistics.mean(1000.0 / r["history"][g - 1] - 1.0 for r in results) for g in marks]
+    parts = ", ".join(f"thế hệ {g}: {m:.2f}" for g, m in zip(marks, means))
+    before = [r["battery_infeasible_ga"] for r in results]
+    after = [r["battery_infeasible"] for r in results]
+    return (f"- Hội tụ (GA đề xuất, cost chọn lọc TB): {parts} → 1/4 cuối giảm {100 * (1 - means[2] / means[1]):.2f}%\n"
+            f"- Tuyến thiếu pin của GA đề xuất theo seed: trước 2-Opt {before}, sau 2-Opt {after}")
 
 
 def format_compare(variants: Dict[str, List[Dict[str, Any]]]) -> str:
@@ -189,14 +236,17 @@ def format_compare(variants: Dict[str, List[Dict[str, Any]]]) -> str:
         return f"{statistics.mean(values):.{digits}f} ± {statistics.stdev(values):.{digits}f}"
 
     lines = [
-        "| Thuật toán | Số lần chạy | Quãng đường | Năng lượng | Phạt trễ giờ | Tổng chi phí | Hợp lệ | Thời gian (s) |",
-        "| :--- | :---: | ---: | ---: | ---: | ---: | :---: | ---: |",
+        "| Thuật toán | Số lần chạy | Quãng đường | Năng lượng | Phạt trễ giờ | Đúng giờ (%) | Tuyến thiếu pin "
+        "| Tổng chi phí | Hợp lệ | Thời gian (s) |",
+        "| :--- | :---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | ---: |",
     ]
     for name, results in variants.items():
         valid = sum(r["is_valid"] for r in results)
         lines.append(
             f"| {name} | {len(results)} | {stat(results, 'distance')} | {stat(results, 'energy')} | "
-            f"{stat(results, 'tw_penalty')} | {stat(results, 'total_cost')} | {valid}/{len(results)} | "
+            f"{stat(results, 'tw_penalty')} | {stat(results, 'on_time_rate', 1)} | "
+            f"{stat(results, 'battery_infeasible', 1)} | {stat(results, 'total_cost')} | "
+            f"{valid}/{len(results)} | "
             f"{stat(results, 'exec_time_sec', 3)} |"
         )
 
@@ -288,6 +338,10 @@ def main():
     p_cmp.add_argument("--mutation-rate", type=float, required=True)
     p_cmp.add_argument("--generations", type=int, required=True)
     p_cmp.add_argument("--penalty-factor", type=float, default=100.0, help="constraint_penalty_factor của GA")
+    p_cmp.add_argument("--workers", type=int, default=None,
+                       help="num_workers của GA (đánh giá fitness song song); bỏ trống = tuần tự")
+    p_cmp.add_argument("--only-proposed", action="store_true",
+                       help="Chỉ chạy Greedy và GA đề xuất (bỏ các dòng GA trung gian), dùng cho quy mô lớn")
 
     p_spd = sub.add_parser("speedup", help="Đo T_p, S_p, E_p khi đánh giá fitness song song")
     p_spd.add_argument("--scales", type=int, nargs="+", default=[10, 100, 500])
@@ -316,10 +370,16 @@ def main():
     elif args.command == "compare":
         ga_params = {"pop_size": args.pop_size, "mutation_rate": args.mutation_rate, "generations": args.generations,
                      "constraint_penalty_factor": args.penalty_factor}
+        if args.workers is not None:
+            ga_params["num_workers"] = args.workers
         for n in args.scales:
             pipeline = load_benchmark(n)
-            print(f"\n## Benchmark {n} điểm giao (K = {pipeline.num_drones} Drone, GA chạy {args.seeds} seed)\n", flush=True)
-            print(format_compare(compare(pipeline, list(range(args.seeds)), ga_params)), flush=True)
+            workers = f", GA tính fitness trên {args.workers} tiến trình" if args.workers else ""
+            print(f"\n## Benchmark {n} điểm giao (K = {pipeline.num_drones} Drone, GA chạy {args.seeds} seed"
+                  f"{workers})\n", flush=True)
+            variants = compare(pipeline, list(range(args.seeds)), ga_params, full=not args.only_proposed)
+            print(format_compare(variants), flush=True)
+            print(format_convergence(list(variants.values())[-1]), flush=True)
 
     elif args.command == "speedup":
         energy_modes = {"off": [False], "on": [True], "both": [False, True]}[args.energy]
