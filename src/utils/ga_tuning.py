@@ -317,6 +317,60 @@ def format_speedup(rows: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def plot_speedup(csv_path: str, out_path: str) -> None:
+    """
+    Vẽ S_p theo số tiến trình từ CSV của lệnh `speedup`: 2 khung (không có / có EnergyManager),
+    mỗi quy mô một đường, kèm đường lý tưởng S_p = p và mức tiêu chí 1.8x của nhóm.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    with open(csv_path, encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    scales = sorted({int(r["n_delivery"]) for r in rows})
+    workers = sorted({int(r["workers"]) for r in rows})
+    colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]  # thứ tự cố định theo quy mô
+    ink, muted, grid = "#0b0b0b", "#52514e", "#e4e3df"
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.6), sharey=True)
+    for ax, em in zip(axes, ("0", "1")):
+        ax.plot(workers, workers, color=muted, lw=1.2, ls="--", zorder=1, label="Lý tưởng $S_p = p$")
+        ax.hlines(1.8, 0.7, workers[-1], color=muted, lw=1, ls=":", zorder=1, label="Tiêu chí của nhóm (1.8x)")
+        ends = []
+        for n, color in zip(scales, colors):
+            pts = sorted((int(r["workers"]), float(r["speedup"])) for r in rows
+                         if r["energy_manager"] == em and int(r["n_delivery"]) == n)
+            xs, ys = zip(*pts)
+            ax.plot(xs, ys, color=color, lw=2, marker="o", ms=7, mec="white", mew=1.5, label=f"{n} điểm", zorder=3)
+            ends.append([ys[-1], ys[-1], f"{n} điểm  {ys[-1]:.1f}x"])
+        # Nhãn cuối đường: giãn theo chiều dọc để không chồng nhau (cách nhau >= 0.35 đơn vị trục tung)
+        ends.sort()
+        for prev, cur in zip(ends, ends[1:]):
+            cur[1] = max(cur[1], prev[1] + 0.35)
+        for y_true, y_text, text in ends:
+            ax.annotate(text, (workers[-1], y_true), xytext=(workers[-1] + 0.25, y_text), va="center",
+                        fontsize=9, color=ink)
+        ax.set_title("Có EnergyManager" if em == "1" else "Không có EnergyManager", fontsize=11, color=ink, loc="left")
+        ax.set_xticks(workers)
+        ax.set_xlim(0.7, workers[-1] + 2.6)
+        ax.set_xlabel("Số tiến trình $p$", color=muted)
+        ax.grid(axis="y", color=grid, lw=0.8)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+        for side in ("left", "bottom"):
+            ax.spines[side].set_color(grid)
+        ax.tick_params(colors=muted)
+    axes[0].set_ylabel("Tăng tốc $S_p = T_1 / T_p$", color=muted)
+    axes[0].set_ylim(0, max(workers) + 0.5)
+    axes[0].legend(loc="upper left", frameon=False, fontsize=9)
+    fig.suptitle("Tăng tốc khi chấm fitness song song (GA 100 cá thể × 200 thế hệ)", fontsize=12, color=ink,
+                 x=0.01, ha="left")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200, facecolor="white")
+    plt.close(fig)
+
+
 def main():
     """Dòng lệnh: `sweep` (quét tham số) hoặc `compare` (so sánh với Greedy); in kết quả dạng Markdown."""
     parser = argparse.ArgumentParser(description="Thực nghiệm tinh chỉnh tham số GA (TV1)")
@@ -352,6 +406,10 @@ def main():
     p_spd.add_argument("--energy", choices=["off", "on", "both"], default="both",
                        help="Chạy không có / có / cả hai trường hợp EnergyManager")
     p_spd.add_argument("--output", default=os.path.join(REPO_DIR, "data", "processed", "ga_speedup_results.csv"))
+
+    p_plot = sub.add_parser("plot-speedup", help="Vẽ biểu đồ S_p từ CSV của lệnh speedup (không chạy lại GA)")
+    p_plot.add_argument("--input", default=os.path.join(REPO_DIR, "data", "processed", "ga_speedup_results.csv"))
+    p_plot.add_argument("--output", default=os.path.join(REPO_DIR, "docs", "figures", "ga_speedup.png"))
     args = parser.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -406,6 +464,10 @@ def main():
                         })
                     f.flush()
         print(f"\nĐã ghi {args.output}", flush=True)
+
+    elif args.command == "plot-speedup":
+        plot_speedup(args.input, args.output)
+        print(f"Đã lưu {args.output}", flush=True)
 
 
 if __name__ == "__main__":
