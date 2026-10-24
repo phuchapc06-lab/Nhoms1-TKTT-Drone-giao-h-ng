@@ -122,3 +122,39 @@ python src/utils/ga_tuning.py sweep --scales 50 --pop-sizes 100 --mutation-rates
 python src/utils/ga_tuning.py compare --scales 10 50 100 --seeds 5 --pop-size 100 --mutation-rate 0.5 --generations 2000
 ```
 Lệnh `compare` mất khoảng 1 giờ trên máy thường (phần lớn ở benchmark 100).
+
+## 10. Song song hóa đánh giá fitness (cập nhật 25/10/2026)
+**Thiết kế** (`GeneticAlgorithm(num_workers=p)`): mỗi thế hệ, các cá thể chưa có trong cache (đã bỏ trùng) được chấm điểm trên `p` tiến trình (`multiprocessing.Pool`). Pool tạo một lần cho mỗi lần `evolve()`; dữ liệu bài toán (`nodes`, ma trận, `FitnessCalculator`, `EnergyManager`) gửi một lần qua `initializer`. Chọn lọc, lai ghép, đột biến vẫn chạy ở tiến trình chính, nên cùng seed thì mọi `p` cho **cùng lời giải và cùng history** (script kiểm tra điều này ở mọi dòng bên dưới).
+
+**Thiết lập:**
+- Dữ liệu `data/raw/benchmark_{10,50,100,500}.json` bản trên `develop` ngày 25/10. Khối lượng hàng đã đổi so với mục 2, nên K = 3 / 15 / 31 / 150.
+- GA 100 cá thể × 200 thế hệ, seed 0. Mỗi cấu hình chạy 3 lần, lấy lần nhanh nhất.
+- $T_p$ = `ga.runtime`, **gồm cả thời gian khởi động Pool**.
+- Máy: Intel Core i5-13500H (4 nhân hiệu năng cao + 8 nhân tiết kiệm điện, 16 luồng), Windows 11, Python 3.14.
+- Số liệu gốc: `data/processed/ga_speedup_results.csv`.
+
+| Quy mô (độ dài chromosome) | EnergyManager | $T_1$ (s) | ms / thế hệ ($p$ = 1) | $S_2$ | $S_4$ | $S_8$ | $E_4$ |
+| :---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10 điểm (12) | không | 0.35 | 1.7 | 0.36x | 0.32x | 0.22x | 7.9% |
+| 10 điểm (12) | có | 0.68 | 3.4 | 0.57x | 0.58x | 0.44x | 14.5% |
+| 50 điểm (64) | không | 1.71 | 8.5 | 0.95x | 1.14x | 0.99x | 28.5% |
+| 50 điểm (64) | có | 5.03 | 25.2 | 1.41x | **2.00x** | 2.13x | 50.0% |
+| 100 điểm (130) | không | 3.37 | 16.9 | 1.23x | 1.64x | 1.50x | 41.0% |
+| 100 điểm (130) | có | 13.64 | 68.2 | 1.66x | **2.60x** | 3.17x | 64.9% |
+| 500 điểm (649) | không | 17.08 | 85.4 | 1.54x | **2.00x** | 1.72x | 50.0% |
+| 500 điểm (649) | có | 167.32 | 836.6 | **1.85x** | **2.92x** | **3.80x** | 72.9% |
+
+$S_p = T_1 / T_p$, $E_p = S_p / p$. Đậm: đạt tiêu chí của nhóm ($S \ge 1.8$).
+
+**Phân tích:**
+1. **Tăng tốc phụ thuộc chi phí chấm một cá thể.** Ở 500 điểm có EnergyManager, mỗi lần chấm tốn khoảng 8 ms (chèn trạm sạc cho 150 tuyến), nên 4 tiến trình đạt 2.92x và 8 tiến trình đạt 3.80x. Không có EnergyManager, mỗi lần chấm chỉ khoảng 1 ms, nên 4 tiến trình chỉ đạt 2.00x.
+2. **Bài nhỏ chạy song song chậm hơn.** Ở 10 điểm, cả 200 thế hệ chỉ tốn 0.35–0.68 s, ít hơn thời gian khởi động Pool. Trên Windows, mỗi tiến trình con khởi động Python mới và nạp lại `pipeline` cùng matplotlib (~0.6 s; cả Pool 4 tiến trình ~2.5 s ở 500 điểm). Vì vậy nên để `num_workers=None` (tuần tự) khi N ≤ 50 và không dùng EnergyManager.
+3. **Phần không song song được.** Chỉ số Karp-Flatt $e = (1/S_p - 1/p)/(1 - 1/p)$ ở 500 điểm có EnergyManager là 0.08 / 0.12 / 0.16 với p = 2 / 4 / 8. Phần này gồm khởi động Pool, chọn lọc + OX + đột biến ở tiến trình chính (~7 ms / thế hệ) và chi phí gửi chromosome giữa các tiến trình. $e$ tăng theo p, một phần vì chi phí khởi động Pool tăng theo số tiến trình, một phần do nhân tiết kiệm điện (mục 4).
+4. **Từ 4 lên 8 tiến trình lợi ít.** Tiến trình thứ 5 trở đi chạy trên nhân tiết kiệm điện, chậm hơn. Ở 500 điểm không có EnergyManager, 8 tiến trình còn chậm hơn 4 tiến trình.
+5. **Số đo trên là cận dưới.** Pipeline mặc định chạy 2000 thế hệ, gấp 10 lần ở đây, nên chi phí khởi động Pool (cố định) chiếm tỷ lệ nhỏ hơn nhiều và tăng tốc thực tế sẽ cao hơn. Đây là suy luận, chưa đo.
+
+**Tái lập:**
+```bash
+python src/utils/ga_tuning.py speedup --scales 10 50 100 500 --workers 1 2 4 8 --generations 200 --repeats 3
+```
+Mất khoảng 25 phút; lần đầu chạy 500 điểm cần tính ma trận A* (~50 s với 8 tiến trình, sau đó dùng cache `data/processed/distance_matrix_500.pkl`).

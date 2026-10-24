@@ -6,8 +6,10 @@ Chạy từ thư mục repo (cần data/raw/benchmark_{N}.json, sinh bằng src/
     python src/utils/ga_tuning.py sweep --scales 10 50 --seeds 10
     python src/utils/ga_tuning.py sweep --scales 50 --pop-sizes 100 --generations 500 1000 2000 --seed-greedy
     python src/utils/ga_tuning.py compare --scales 10 50 100 --seeds 5 --pop-size 100 --mutation-rate 0.2 --generations 1000
+    python src/utils/ga_tuning.py speedup --scales 10 100 500 --workers 1 2 4 8 --generations 200
 """
 import argparse
+import csv
 import itertools
 import math
 import os
@@ -45,10 +47,11 @@ def load_benchmark(num_delivery: int) -> UAVRoutingPipeline:
     total_demand = sum(n["demand"] for n in pipeline.nodes.values() if n["type"] == "delivery")
     pipeline.num_drones = math.ceil(total_demand * CAPACITY_SLACK / DRONE_CAPACITY)
 
-    # Mỗi quy mô một file cache riêng (cache mặc định của TV2 chỉ giữ 1 bộ dữ liệu)
+    # Mỗi quy mô một file cache riêng (cache mặc định của TV2 chỉ giữ 1 bộ dữ liệu).
+    # Chưa có cache thì tính song song (ma trận 500 điểm: ~50 s với 8 tiến trình)
     cache_path = os.path.join(REPO_DIR, "data", "processed", f"distance_matrix_{num_delivery}.pkl")
     dist, paths = compute_distance_matrix(
-        pipeline.nodes, pipeline.no_fly_zones, pipeline.grid_size, cache_path=cache_path
+        pipeline.nodes, pipeline.no_fly_zones, pipeline.grid_size, cache_path=cache_path, parallel=True
     )
     # Cặp không tới được: xử lý giống pipeline.compute_distance_matrix (Euclid x 2)
     for i, j in zip(*np.where(np.isinf(dist))):
@@ -206,6 +209,64 @@ def format_compare(variants: Dict[str, List[Dict[str, Any]]]) -> str:
     return "\n".join(lines)
 
 
+# ----------------------------------------------------------------------
+# 3. Đo tăng tốc khi đánh giá fitness song song
+# ----------------------------------------------------------------------
+def speedup(
+    pipeline: UAVRoutingPipeline, workers: List[int], generations: int, pop_size: int,
+    repeats: int, use_energy_manager: bool, seed: int = 0
+) -> List[Dict[str, Any]]:
+    """
+    Chạy cùng một cấu hình GA (cùng seed) với từng số tiến trình p, mỗi p lặp `repeats` lần và lấy lần
+    nhanh nhất làm T_p (giảm nhiễu do máy bận). Thời gian là ga.runtime, gồm cả khởi động Pool.
+    S_p = T_1 / T_p, E_p = S_p / p; Karp-Flatt e = (1/S_p - 1/p) / (1 - 1/p) ước lượng phần
+    chạy tuần tự (chọn lọc, lai ghép, đột biến ở tiến trình chính, truyền dữ liệu, khởi động Pool).
+    Cùng seed thì mọi p phải cho cùng lời giải: hàm kiểm tra luôn điều này.
+    """
+    if workers[0] != 1:
+        raise ValueError("workers phải bắt đầu bằng 1 (T_1 là thời gian chạy tuần tự)")
+    rows = []
+    reference = None
+    for p in workers:
+        times = []
+        for _ in range(repeats):
+            ga = GeneticAlgorithm(
+                pipeline.nodes, pipeline.dist_matrix, pipeline.num_drones,
+                fitness_calc=pipeline.fitness_calc,
+                energy_manager=pipeline.energy_manager if use_energy_manager else None,
+                pop_size=pop_size, generations=generations, seed=seed, num_workers=p
+            )
+            ga.evolve()
+            times.append(ga.runtime)
+        if reference is None:
+            reference = (ga.best_chromosome, ga.history)
+        elif (ga.best_chromosome, ga.history) != reference:
+            raise AssertionError(f"num_workers={p} cho kết quả khác chạy tuần tự")
+
+        t_p = min(times)
+        s_p = rows[0]["time_s"] / t_p if rows else 1.0
+        rows.append({
+            "workers": p, "time_s": t_p, "ms_per_gen": 1000 * t_p / generations,
+            "speedup": s_p, "efficiency": s_p / p,
+            "karp_flatt": (1 / s_p - 1 / p) / (1 - 1 / p) if p > 1 else None,
+        })
+        print(f"  xong p = {p}: {t_p:.2f} s", flush=True)
+    return rows
+
+
+def format_speedup(rows: List[Dict[str, Any]]) -> str:
+    """Bảng Markdown T_p / S_p / E_p / Karp-Flatt."""
+    lines = [
+        "| Số tiến trình $p$ | $T_p$ (s) | ms / thế hệ | $S_p = T_1/T_p$ | $E_p = S_p/p$ | Karp-Flatt $e$ |",
+        "| :---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for r in rows:
+        e = "—" if r["karp_flatt"] is None else f"{r['karp_flatt']:.3f}"
+        lines.append(f"| {r['workers']} | {r['time_s']:.2f} | {r['ms_per_gen']:.1f} | {r['speedup']:.2f}x | "
+                     f"{100 * r['efficiency']:.1f}% | {e} |")
+    return "\n".join(lines)
+
+
 def main():
     """Dòng lệnh: `sweep` (quét tham số) hoặc `compare` (so sánh với Greedy); in kết quả dạng Markdown."""
     parser = argparse.ArgumentParser(description="Thực nghiệm tinh chỉnh tham số GA (TV1)")
@@ -227,6 +288,16 @@ def main():
     p_cmp.add_argument("--mutation-rate", type=float, required=True)
     p_cmp.add_argument("--generations", type=int, required=True)
     p_cmp.add_argument("--penalty-factor", type=float, default=100.0, help="constraint_penalty_factor của GA")
+
+    p_spd = sub.add_parser("speedup", help="Đo T_p, S_p, E_p khi đánh giá fitness song song")
+    p_spd.add_argument("--scales", type=int, nargs="+", default=[10, 100, 500])
+    p_spd.add_argument("--workers", type=int, nargs="+", default=[1, 2, 4, 8], help="Phải bắt đầu bằng 1")
+    p_spd.add_argument("--generations", type=int, default=200)
+    p_spd.add_argument("--pop-size", type=int, default=100)
+    p_spd.add_argument("--repeats", type=int, default=3, help="Số lần lặp mỗi cấu hình, lấy lần nhanh nhất")
+    p_spd.add_argument("--energy", choices=["off", "on", "both"], default="both",
+                       help="Chạy không có / có / cả hai trường hợp EnergyManager")
+    p_spd.add_argument("--output", default=os.path.join(REPO_DIR, "data", "processed", "ga_speedup_results.csv"))
     args = parser.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -249,6 +320,32 @@ def main():
             pipeline = load_benchmark(n)
             print(f"\n## Benchmark {n} điểm giao (K = {pipeline.num_drones} Drone, GA chạy {args.seeds} seed)\n", flush=True)
             print(format_compare(compare(pipeline, list(range(args.seeds)), ga_params)), flush=True)
+
+    elif args.command == "speedup":
+        energy_modes = {"off": [False], "on": [True], "both": [False, True]}[args.energy]
+        fields = ["n_delivery", "num_drones", "chromosome_len", "energy_manager", "pop_size", "generations",
+                  "workers", "time_s", "ms_per_gen", "speedup", "efficiency", "karp_flatt"]
+        with open(args.output, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            for n in args.scales:
+                pipeline = load_benchmark(n)
+                for use_em in energy_modes:
+                    em = "có" if use_em else "không có"
+                    print(f"\n## Benchmark {n} điểm giao (K = {pipeline.num_drones} Drone, {em} EnergyManager, "
+                          f"{args.pop_size} cá thể x {args.generations} thế hệ, lấy lần nhanh nhất / "
+                          f"{args.repeats} lần)\n", flush=True)
+                    rows = speedup(pipeline, args.workers, args.generations, args.pop_size, args.repeats, use_em)
+                    print("\n" + format_speedup(rows), flush=True)
+                    for r in rows:
+                        writer.writerow({
+                            "n_delivery": n, "num_drones": pipeline.num_drones,
+                            "chromosome_len": n + pipeline.num_drones - 1, "energy_manager": int(use_em),
+                            "pop_size": args.pop_size, "generations": args.generations,
+                            **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()},
+                        })
+                    f.flush()
+        print(f"\nĐã ghi {args.output}", flush=True)
 
 
 if __name__ == "__main__":
