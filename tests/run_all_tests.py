@@ -79,6 +79,11 @@ TEST_SUITES = [
         "name": "TV5: Mathematical Correctness & Complexity Proofs",
         "member": "Tech Lead (Thứ Sáu - 23/10)"
     },
+    {
+        "file": "tests/test_day4_tong_ket.py",
+        "name": "TV5: System Verification & Final Defense Wrap-up",
+        "member": "Tech Lead (Thứ Bảy - 24/10)"
+    },
 ]
 
 def main():

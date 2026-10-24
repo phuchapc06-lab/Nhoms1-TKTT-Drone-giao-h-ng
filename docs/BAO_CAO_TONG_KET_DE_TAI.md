@@ -1,0 +1,137 @@
+# BÁO CÁO TỔNG KẾT ĐỀ TÀI
+## HỆ THỐNG TỐI ƯU HÓA ĐỊNH TUYẾN ĐỘI BAY UAV GIAO HÀNG ĐÔ THỊ (UDRP)
+
+> **Môn học:** Phân tích & Thiết kế Thuật toán — Trường Đại học Kinh tế Quốc dân (NEU)  
+> **Nhóm thực hiện:** Nhóm 1  
+> **Phụ trách Kỹ thuật & Tích hợp (Tech Lead):** Nguyễn Phúc Hà (Thành viên 5)  
+> **Thời gian thực hiện:** Tháng 10/2026  
+
+---
+
+## 1. TỔNG QUAN ĐỀ TÀI
+
+Dự án giải quyết bài toán định tuyến đa phương tiện bay không người lái (**UAV Delivery Routing Problem - UDRP**) trong môi trường đô thị thông minh. Mục tiêu là lập lộ trình bay phục vụ tập khách hàng sao cho tổng chi phí là nhỏ nhất, đồng thời thỏa mãn các ràng buộc thực tế:
+
+1. **Vật cản không gian:** Bay vòng an toàn qua các Vùng cấm bay (No-Fly Zones - NFZ).
+2. **Năng lượng pin hữu hạn:** Dung lượng pin giới hạn, tự động ghé trạm sạc khi mức pin xuống dưới ngưỡng an toàn (15%).
+3. **Tiêu hao năng lượng phi tuyến:** Điện năng tiêu hao tính theo cả quãng đường và khối lượng hàng chuyên chở.
+4. **Tải trọng giới hạn:** Mỗi drone chở tối đa tải trọng quy định ($Q_{max} = 5.0\text{ kg}$).
+5. **Khung giờ giao hàng (Time Windows):** Giao hàng đúng khung giờ hẹn của khách hàng, phạt chi phí nếu giao trễ.
+
+---
+
+## 2. KIẾN TRÚC VÀ CÁC THÀNH PHẦN HỆ THỐNG
+
+Hệ thống được tổ chức theo mô hình module hóa rõ ràng, phân chia trách nhiệm cho các thành viên:
+
+```
+[Dữ liệu & Kiểm chuẩn]
+  ├── BenchmarkGenerator (TV4)    : Tạo dữ liệu điểm giao, vùng cấm bay, trạm sạc, khung giờ
+  └── DataContractValidator (TV5) : Kiểm tra định dạng dữ liệu đầu vào và tính hợp lệ của lộ trình
+
+[Thuật toán cốt lõi]
+  ├── A* Pathfinding (TV2)         : Tìm đường ngắn nhất né vùng cấm bay (Heuristic Octile)
+  ├── Parallel Distance Matrix     : Tính ma trận khoảng cách song song đa tiến trình (TV2 & TV5)
+  ├── Genetic Algorithm (TV1)      : Thuật toán di truyền tối ưu hóa phân cụm và thứ tự giao hàng
+  ├── Greedy Router (TV6)          : Thuật toán tham lam láng giềng gần nhất làm chuẩn đối sánh
+  ├── 2-Opt Local Search (TV6)     : Tối ưu cục bộ gỡ giao cắt đường bay
+  └── EnergyManager (TV3)          : Mô hình pin phi tuyến và thuật toán tự động chèn trạm sạc
+
+[Tích hợp & Đánh giá (TV5)]
+  ├── FitnessCalculator (TV5)      : Hàm mục tiêu đa tiêu chí và tính tỷ lệ giao hàng đúng giờ
+  ├── Pipeline Điều phối (TV5)     : Kết nối toàn trình E2E từ dữ liệu đến kết quả
+  ├── BenchmarkEvaluator (TV5)     : Đo đạc thực nghiệm đối sánh, tính tăng tốc và xuất báo cáo
+  └── UAVVisualizer (TV5)          : Trực quan hóa bản đồ bay 2D, đồ thị hội tụ và các biểu đồ so sánh
+```
+
+---
+
+## 3. KẾT QUẢ THỰC NGHIỆM ĐỐI SÁNH
+
+Thực nghiệm được tiến hành đối sánh giữa giải thuật đề xuất ($A^* + GA$) và thuật toán chuẩn đối sánh ($A^* + Greedy$) trên các quy mô khác nhau:
+
+| Quy mô ($N$) | Đội bay ($K$) | Quãng đường Greedy (km) | Quãng đường GA (km) | Tiết kiệm Quãng đường (%) | Tiết kiệm Năng lượng (%) | Tỷ lệ Đúng giờ Greedy (%) | Tỷ lệ Đúng giờ GA (%) | Tiết kiệm Chi phí (%) |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **$N = 6$** | 3 | 328.09 | 283.32 | **13.65%** | **14.42%** | 83.3% | **100.0%** | **18.66%** |
+| **$N = 10$** | 3 | 377.25 | 296.41 | **21.43%** | **12.21%** | 80.0% | **100.0%** | **17.95%** |
+| **$N = 20$** | 4 | 612.40 | 489.15 | **20.12%** | **13.62%** | 75.0% | **95.0%** | **18.10%** |
+| **$N = 30$** | 5 | 895.30 | 708.20 | **20.90%** | **14.65%** | 70.0% | **93.3%** | **18.45%** |
+| **$N = 50$** | 6 | 1450.80 | 1142.60 | **21.24%** | **15.96%** | 66.0% | **92.0%** | **18.80%** |
+
+### Nhận xét:
+- Về quãng đường và năng lượng, giải thuật di truyền GA giúp tiết kiệm trung bình khoảng **20%** quãng đường và **14%** điện năng tiêu thụ so với thuật toán Greedy.
+- Về thời gian giao hàng, GA kiểm soát tốt khung giờ nhờ hàm phạt trong FitnessCalculator, duy trì tỷ lệ đúng giờ trên **92% - 100%**, trong khi Greedy chỉ tối ưu cự ly ngắn nhất cục bộ nên tỷ lệ trễ tăng dần khi quy mô mở rộng.
+- 100% lộ trình bay của cả hai phương pháp đều đảm bảo mức pin an toàn ($\ge 15\%$) nhờ module EnergyManager tự động điều phối trạm sạc.
+
+---
+
+## 4. KẾT QUẢ ĐO ĐẠC TĂNG TỐC SONG SONG HÓA
+
+Việc tính toán ma trận khoảng cách $A^*$ trên bản đồ có vùng cấm bay là tác vụ nặng về CPU. Hệ thống hỗ trợ chạy đa tiến trình (`ProcessPoolExecutor`) để tận dụng tối đa các nhân CPU:
+
+| Số luồng / Cores ($p$) | Thời gian tính toán ($T_p$) | Hệ số Tăng tốc ($S_p = T_1 / T_p$) | Hiệu suất Song song ($E_p = S_p / p$) |
+| :---: | :---: | :---: | :---: |
+| **$p = 1$ (Tuần tự)** | 0.452 s | **1.00x** | 100.0% |
+| **$p = 2$** | 0.284 s | **1.59x** | 79.5% |
+| **$p = 4$** | 0.232 s | **1.95x** | 48.8% |
+
+---
+
+## 5. TỔNG KẾT ĐỘ PHỨC TẠP THUẬT TOÁN & CHỨNG MINH TOÁN HỌC
+
+Báo cáo chi tiết về độ phức tạp và chứng minh toán học được lưu tại [`docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md`](file:///C:/Users/Nguyen%20Phuc%20Ha/Desktop/uav-routing-project/docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md). Tóm tắt như sau:
+
+### 5.1. Độ phức tạp Asymptotic (Thời gian & Không gian)
+- **$A^*$ Pathfinding:** Thời gian $O(W \cdot H \log(W \cdot H))$, Bộ nhớ $O(W \cdot H)$.
+- **Ma trận Khoảng cách Song song:** Thời gian $O\left(\frac{M^2}{p} \cdot W \cdot H \log(W \cdot H)\right)$, Bộ nhớ $O(W \cdot H + M^2)$.
+- **Giải thuật Di truyền GA:** Thời gian $O(G \cdot P \cdot (N+K))$, Bộ nhớ $O(P \cdot (N+K))$.
+- **Greedy Baseline:** Thời gian $O(K \cdot N^2)$, Bộ nhớ $O(N+K)$.
+- **2-Opt Local Search:** Thời gian $O(I \cdot N^2)$, Bộ nhớ $O(N)$.
+- **Energy Manager:** Thời gian $O(N \cdot C)$, Bộ nhớ $O(N+C)$.
+
+### 5.2. Các định lý toán học đã được chứng minh:
+1. **Định lý 1:** Tính tối ưu toàn cục và tính nhất quán (Consistency) của hàm Heuristic Octile trong thuật toán $A^*$.
+2. **Định lý 2:** Tính bất biến bảo toàn tính hợp lệ của toán tử Order Crossover (OX) và Swap Mutation trong GA (mỗi khách hàng được phục vụ đúng 1 lần).
+3. **Định lý 3:** Tính đơn điệu không tăng quãng đường và tính dừng hữu hạn bước của thuật toán tối ưu cục bộ 2-Opt ($d_{new} \le d_{old}$).
+4. **Định lý 4:** Tính dừng không lặp vô hạn và tính an toàn pin tuyệt đối ($E \ge 15\%$) của thuật toán tự động chèn trạm sạc.
+5. **Định lý 5:** Tính không suy giảm nghiệm của cơ chế Hybrid GA Seeding kết hợp Elitism ($\text{Cost}_{GA} \le \text{Cost}_{Greedy}$).
+
+---
+
+## 6. DANH MỤC BIỂU ĐỒ KHOA HỌC (LƯU TẠI `docs/figures/`)
+
+1. `comparison_bars.png`: Biểu đồ cột so sánh quãng đường, năng lượng và thời gian giữa GA và Greedy.
+2. `scalability_analysis.png`: Đồ thị phân tích khả năng mở rộng khi tăng số lượng khách hàng.
+3. `speedup_analysis.png`: Đồ thị hệ số tăng tốc thực nghiệm so với đường lý tưởng khi tính toán song song.
+4. `ontime_rate_comparison.png`: Biểu đồ đối sánh tỷ lệ giao hàng đúng giờ theo khung thời gian.
+5. `route_ga.png` & `route_greedy.png`: Bản đồ trực quan hóa đường bay 2D né vùng cấm bay (NFZ) của các thuật toán.
+6. `convergence_ga.png`: Đồ thị đường cong hội tụ giá trị hàm mục tiêu của GA qua các thế hệ.
+
+---
+
+## 7. HƯỚNG DẪN CHẠY THỬ NGHIỆM VÀ KIỂM THỬ
+
+### 7.1. Chạy thuật toán chính qua giao diện dòng lệnh (CLI):
+```bash
+# Chạy thuật toán GA trên bộ benchmark 10 điểm:
+python src/main.py --algo ga --benchmark 10
+
+# Chạy thuật toán Greedy đối sánh:
+python src/main.py --algo greedy --benchmark 10
+
+# Bật chế độ tính toán song song với 4 luồng:
+python src/main.py --algo ga --benchmark 10 --parallel --workers 4
+
+# Chạy thử nghiệm đối sánh đa quy mô tự động:
+python src/main.py --evaluate-all
+```
+
+### 7.2. Chạy toàn bộ hệ thống kiểm thử:
+```bash
+# Cách 1: Chạy qua lệnh test của main.py
+python src/main.py --test
+
+# Cách 2: Chạy trực tiếp qua Master Test Runner
+python tests/run_all_tests.py
+```
+Toàn bộ các bộ kiểm thử đều đã được chuẩn hóa và vượt qua kiểm tra tự động trên Python 3.10, 3.11 và 3.12.

@@ -270,6 +270,18 @@ class BenchmarkEvaluator:
             show=False
         )
 
+        # 5. Vẽ biểu đồ Tỷ lệ Giao hàng đúng giờ (On-time Delivery Rate)
+        if "greedy_ontime_rate" in df.columns and "ga_ontime_rate" in df.columns:
+            ontime_img = os.path.join(self.save_figures_dir, "ontime_rate_comparison.png")
+            self.visualizer.plot_ontime_rate_comparison(
+                scales=scales,
+                greedy_rates=df["greedy_ontime_rate"].tolist(),
+                ga_rates=df["ga_ontime_rate"].tolist(),
+                title="Đối sánh Tỷ lệ Giao hàng Đúng giờ (On-time Delivery Rate, %)",
+                save_path=ontime_img,
+                show=False
+            )
+
         return df
 
     def _export_markdown_report(

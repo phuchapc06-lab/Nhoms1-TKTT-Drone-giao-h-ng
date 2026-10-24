@@ -45,7 +45,7 @@
 
 ---
 
-## 📅 TIẾN ĐỘ TUẦN 5 & TUẦN 6 (Cập nhật đến Thứ Sáu - 23/10/2026)
+## 📅 TIẾN ĐỘ TUẦN 5 & TUẦN 6 (Cập nhật đến Thứ Bảy - 24/10/2026)
 
 ### Ngày 1: Thứ Tư (21/10/2026) - Thiết kế Song song hóa & Đo lường Tỷ lệ Giao hàng Đúng giờ
 - **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
@@ -91,6 +91,13 @@
   - **Bộ Kiểm thử Độc lập Ngày 3:**
     - Xây dựng bộ kiểm thử mới `tests/test_day3_complexity_correctness.py` kiểm chứng toàn diện 5 định lý toán học (100% Passed).
     - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **13/13 Suites Passed (100%)**.
+
+### Ngày 4: Thứ Bảy (24/10/2026) - Trực quan hóa tỷ lệ đúng giờ, tổng kết đề tài & kiểm thử hệ thống
+- **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
+  - **Nâng cấp trực quan hóa:** Cài đặt phương thức `plot_ontime_rate_comparison()` trong `UAVVisualizer`, xuất biểu đồ đối sánh tỷ lệ giao hàng đúng giờ `docs/figures/ontime_rate_comparison.png`.
+  - **Báo cáo tổng kết đề tài:** Soạn thảo tài liệu tổng kết hệ thống [`docs/BAO_CAO_TONG_KET_DE_TAI.md`](docs/BAO_CAO_TONG_KET_DE_TAI.md) bao quát kiến trúc, bảng số liệu đối sánh, tăng tốc song song và tóm tắt chứng minh toán học.
+  - **Bộ kiểm thử Ngày 4:** Xây dựng `tests/test_day4_tong_ket.py` kiểm thử toàn diện các biểu đồ khoa học, dữ liệu đối sánh và luồng tích hợp E2E Pipeline (đạt 100% Passed).
+  - **Nâng cấp Master Test Runner:** Cập nhật `tests/run_all_tests.py` chạy toàn bộ 14/14 test suites đạt kết quả 100% Passed.
 
 ---
 

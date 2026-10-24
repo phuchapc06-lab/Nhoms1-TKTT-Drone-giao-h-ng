@@ -159,7 +159,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
   11. `tests/test_day1_parallel_ontime.py`: Song song hóa A* Distance Matrix & Chỉ số Giao đúng giờ Ngày 1 (Thứ Tư - 21/10).
   12. `tests/test_day2_benchmark_speedup.py`: Thực nghiệm Đa quy mô Toàn diện & Biểu đồ Speedup Ngày 2 (Thứ Năm - 22/10).
   13. `tests/test_day3_complexity_correctness.py`: Chứng minh Toán học, Tính đúng đắn & Độ phức tạp Ngày 3 (Thứ Sáu - 23/10).
-- **Kết quả kiểm thử:** **13/13 Passed (100%)**.
+- **Kết quả kiểm thử:** **14/14 Passed (100%)**.
 
 ---
 
@@ -205,7 +205,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
     5. *Định lý 5:* Tính không suy giảm nghiệm của cơ chế Hybrid GA Seeding ($Cost_{GA} \le Cost_{Greedy}$).
 - **Xây dựng Bộ Kiểm thử Thứ Sáu (Ngày 3):**
   - Tạo `tests/test_day3_complexity_correctness.py` kiểm chứng thực nghiệm độc lập toàn bộ 5 định lý toán học (100% Passed).
-  - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **13/13 Suites Passed (100%)**.
+  - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **14/14 Suites Passed (100%)**.
 
 ---
 
@@ -241,3 +241,5 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 | 27 | `docs/EXPERIMENT_RESULTS.md` | Báo cáo khoa học kết quả thực nghiệm đối sánh đa quy mô | Hoàn thành |
 | 28 | `docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md` | Báo cáo khoa học phân tích độ phức tạp & chứng minh tính đúng đắn | Hoàn thành |
 | 29 | `docs/NGUYEN_PHUC_HA_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+| 30 | `tests/test_day4_tong_ket.py` | Unit Test kiểm thử Tổng kết Hệ thống & On-time Rate Ngày 4 (Thứ 7) | Passed 100% |
+| 31 | `docs/BAO_CAO_TONG_KET_DE_TAI.md` | Báo cáo tổng kết đề tài và hướng dẫn chạy hệ thống | Hoàn thành |

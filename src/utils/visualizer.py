@@ -318,3 +318,56 @@ class UAVVisualizer:
         if show:
             plt.show()
         return fig, axes
+
+
+    def plot_ontime_rate_comparison(
+        self,
+        scales: List[int],
+        greedy_rates: List[float],
+        ga_rates: List[float],
+        title: str = "Đánh giá Tỷ lệ Giao hàng Đúng giờ (On-time Delivery Rate, %)",
+        save_path: Optional[str] = None,
+        show: bool = False
+    ):
+        """
+        Vẽ biểu đồ đối sánh tỷ lệ giao hàng đúng giờ (%) giữa Greedy Baseline và GA Meta-heuristic
+        trên chuỗi kịch bản đa quy mô có ràng buộc cửa sổ thời gian (Time Windows).
+        """
+        import numpy as np
+        fig, ax = plt.subplots(figsize=(9, 5))
+
+        x = np.arange(len(scales))
+        width = 0.35
+
+        bars1 = ax.bar(x - width/2, greedy_rates, width, label="Greedy Baseline (TV6)", color="#d62728", alpha=0.85, edgecolor="black")
+        bars2 = ax.bar(x + width/2, ga_rates, width, label="A* + GA Đề xuất (Nhóm 1)", color="#2ca02c", alpha=0.85, edgecolor="black")
+
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=12)
+        ax.set_xlabel("Quy mô số lượng khách hàng (N điểm)", fontweight="bold")
+        ax.set_ylabel("Tỷ lệ Giao đúng giờ (%)", fontweight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"N={s}" for s in scales])
+        ax.set_ylim(0, 115)
+        ax.axhline(100, color="gray", linestyle=":", alpha=0.6, label="Mục tiêu tối đa (100%)")
+        ax.grid(axis="y", linestyle="--", alpha=0.5)
+        ax.legend(loc="lower left", framealpha=0.9)
+
+        for bar in bars1:
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., h + 1.5, f"{h:.1f}%", ha="center", va="bottom", fontsize=9, fontweight="bold")
+
+        for bar in bars2:
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., h + 1.5, f"{h:.1f}%", ha="center", va="bottom", fontsize=9, fontweight="bold", color="#1a6e1a")
+
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            try:
+                print(f"[Visualizer] Đã lưu biểu đồ On-time Rate vào: {save_path}")
+            except UnicodeEncodeError:
+                print(f"[Visualizer] Da luu bieu do On-time Rate vao: {save_path}")
+
+        if show:
+            plt.show()
+        return fig, ax
