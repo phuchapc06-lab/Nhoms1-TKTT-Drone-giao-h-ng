@@ -88,3 +88,33 @@ def test_stats_recorded():
     compute_distance_matrix(nodes, [(15, 15, 10, 10)], (50, 50), cache_path=None)
     s = dm.LAST_STATS
     assert s["pairs"] == 6 and s["los_pairs"] + s["astar_pairs"] == 6
+
+if __name__ == "__main__":
+    from pathlib import Path
+    import tempfile
+
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+
+    print("=== KIỂM THỬ ĐỘC LẬP MODULE THÀNH VIÊN 2 (A* TỐI ƯU & MA TRẬN) ===")
+    test_straight_line_without_obstacle()
+    print("-> test_straight_line_without_obstacle: PASSED")
+    test_detour_around_nfz_is_longer()
+    print("-> test_detour_around_nfz_is_longer: PASSED")
+    test_boundary_is_inclusive()
+    print("-> test_boundary_is_inclusive: PASSED")
+    test_unreachable_returns_inf()
+    print("-> test_unreachable_returns_inf: PASSED")
+    with tempfile.TemporaryDirectory() as td:
+        tpath = Path(td)
+        test_matrix_properties(tpath)
+        print("-> test_matrix_properties: PASSED")
+        test_cache_is_reused(tpath)
+        print("-> test_cache_is_reused: PASSED")
+    test_parallel_equals_sequential()
+    print("-> test_parallel_equals_sequential: PASSED")
+    test_parallel_flag_compat()
+    print("-> test_parallel_flag_compat: PASSED")
+    test_stats_recorded()
+    print("-> test_stats_recorded: PASSED")
+    print("\n=== TẤT CẢ 9/9 UNIT TEST CHO THÀNH VIÊN 2 ĐÃ VƯỢT QUA XUẤT SẮC! ===")
