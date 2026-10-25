@@ -89,7 +89,9 @@ class BenchmarkEvaluator:
         for route in routes:
             if not route:
                 continue
-            route_energy, _, details = energy_manager.calculate_route_energy_details(route, dist_matrix, nodes)
+            route_energy, _, details = energy_manager.calculate_route_energy_details(
+                route, dist_matrix, nodes, detailed=True
+            )
             total_energy += route_energy
             for d in details:
                 if d.get("charging_time", 0.0) > 0:
@@ -461,4 +463,3 @@ class BenchmarkEvaluator:
             f.write(f"- **Thời gian tính toán & Khả năng mở rộng:** Mặc dù thuật toán GA có thời gian tính toán lớn hơn Greedy, toàn bộ thời gian thực thi vẫn nằm trong ngưỡng vài giây (real-time planning), đáp ứng hoàn hảo yêu cầu vận hành đô thị thông minh.\n")
             if speedup_res:
                 f.write(f"- **Hiệu quả Song song hóa:** Cài đặt đa luồng `ThreadPoolExecutor` giúp tăng tốc tính ma trận khoảng cách $A^*$, giúp giảm đáng kể thời gian tiền xử lý không gian bản đồ khi số lượng điểm giao và vùng cấm bay tăng cao.\n")
-

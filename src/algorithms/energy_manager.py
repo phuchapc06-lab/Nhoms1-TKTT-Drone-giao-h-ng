@@ -79,10 +79,11 @@ class EnergyManager:
         self,
         route: List[int],
         dist_matrix: Any,
-        nodes: Dict[int, Dict[str, Any]]
+        nodes: Dict[int, Dict[str, Any]],
+        detailed: bool = False
     ) -> Tuple[float, bool, List[Dict[str, Any]]]:
         """
-        Tính tổng năng lượng tiêu thụ và trả về chi tiết từng chặng bay để làm báo cáo thực nghiệm.
+        Tính tổng năng lượng tiêu thụ; chỉ trả chi tiết từng chặng khi detailed=True.
         Mỗi phần tử trong danh sách chứa: from, to, distance, cargo, segment_energy,
         battery_before, battery_after_segment, charging_time, battery_after_charge.
         """
@@ -125,19 +126,20 @@ class EnergyManager:
             if battery_after_segment < 0:
                 is_feasible = False
 
-            details.append({
-                "from": u,
-                "to": v,
-                "distance": dist,
-                "payload": segment_payload,
-                "segment_energy": seg_energy,
-                "battery_before": battery_before,
-                "battery_after_segment": battery_after_segment,
-                "charging_time": charge_time,
-                "battery_after_charge": current_battery,
-                "node_type": node_v.get("type"),
-                "node_id": v,
-            })
+            if detailed:
+                details.append({
+                    "from": u,
+                    "to": v,
+                    "distance": dist,
+                    "payload": segment_payload,
+                    "segment_energy": seg_energy,
+                    "battery_before": battery_before,
+                    "battery_after_segment": battery_after_segment,
+                    "charging_time": charge_time,
+                    "battery_after_charge": current_battery,
+                    "node_type": node_v.get("type"),
+                    "node_id": v,
+                })
 
         return total_energy, is_feasible, details
 
@@ -169,11 +171,11 @@ class EnergyManager:
         if not route or len(route) <= 2:
             return route[:], 0.0, True
 
-        charging_stations = [k for k, v in nodes.items() if v.get("type") == "charging"]
-        if not charging_stations:
-            # Không có trạm sạc trên bản đồ -> giữ nguyên và kiểm tra khả thi
-            tot_e, feas = self.calculate_route_energy(route, dist_matrix, nodes)
-            return route[:], tot_e, feas
+        charging_stations = [0] # Coi depot (chỉ số 0) là một trạm sạc
+        for node_id in range(len(nodes) - 1, 0, -1): # Các trạm sạc luôn ở cuối list. Vì thế, tìm kiếm ngược đến node đầu tiên không phải thuộc dạng charging
+            if nodes.get(node_id, {}).get("type") != "charging":
+                break
+            charging_stations.append(node_id)
 
         current_cargo = sum(nodes.get(nid, {}).get("demand", 0.0) for nid in route if nodes.get(nid, {}).get("type") == "delivery")
         current_battery = self.battery_capacity
