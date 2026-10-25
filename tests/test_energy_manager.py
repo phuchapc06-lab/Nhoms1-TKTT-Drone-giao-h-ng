@@ -79,6 +79,20 @@ class TestEnergyManager(unittest.TestCase):
         # Node không có service_time -> fallback về 12.0
         self.assertEqual(manager.get_charging_time({"id": 99}), 12.0)
 
+    def test_detailed_energy_breakdown_and_charging_time(self):
+        """Kiểm tra báo cáo chi tiết từng chặng bay và thời gian sạc tại trạm."""
+        manager = EnergyManager(battery_capacity=100.0, charging_rate=20.0)
+        total_energy, is_valid, details = manager.calculate_route_energy_details([0, 1, 2, 0], self.distances, self.nodes)
+
+        self.assertTrue(is_valid)
+        self.assertAlmostEqual(total_energy, 40.0 * (1.0 + 0.15 * 1.0) + 10.0 + 10.0, places=2)
+        self.assertEqual(len(details), 3)
+        self.assertAlmostEqual(details[0]["segment_energy"], 46.0, places=2)
+        self.assertAlmostEqual(details[0]["payload"], 1.0, places=2)
+        self.assertEqual(details[1]["node_type"], "charging")
+        self.assertAlmostEqual(details[1]["charging_time"], 20.0, places=2)
+        self.assertAlmostEqual(manager.estimate_charging_duration(54.0, self.nodes[2]), 20.0, places=2)
+
 
 if __name__ == "__main__":
     unittest.main()
