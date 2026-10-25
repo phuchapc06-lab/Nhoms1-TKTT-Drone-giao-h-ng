@@ -225,7 +225,9 @@ class EnergyManager:
                     current_battery = self.battery_capacity # Nạp đầy pin tại trạm
                     total_energy += e_to_cs
                     repaired_route.append(best_cs)
-                    # Sau khi sạc tại best_cs, tiếp tục xét từ trạm sạc đó tới v.
+                    if best_cs == v:
+                        idx += 1
+                    # Nếu chưa tới v, tiếp tục xét chặng từ trạm sạc đó.
                 else:
                     # Không trạm sạc nào khả thi -> đành bay tiếp và đánh dấu không khả thi
                     current_battery -= seg_energy

@@ -65,6 +65,22 @@ class TestEnergyManager(unittest.TestCase):
         self.assertEqual(repaired_route[0], 0)
         self.assertEqual(repaired_route[-1], 0)
 
+    def test_depot_used_as_final_charge_stop_is_not_duplicated(self):
+        """Không lặp depot khi depot được chọn làm trạm sạc cho chặng cuối."""
+        manager = EnergyManager(battery_capacity=100.0, min_battery_threshold=0.20)
+        distances = self.distances.copy()
+        distances[1, 2] = 40.0
+        distances[2, 0] = 40.0
+        distances[1, 3] = 40.0
+        distances[3, 0] = 40.0
+        repaired_route, total_energy, is_feasible = manager.repair_route_with_charging(
+            [0, 1, 0], distances, self.nodes
+        )
+
+        self.assertEqual(repaired_route, [0, 1, 0])
+        self.assertAlmostEqual(total_energy, 96.0)
+        self.assertTrue(is_feasible)
+
     def test_rejects_invalid_battery_configuration(self):
         """Kiểm tra ném lỗi ValueError khi cấu hình pin không hợp lệ."""
         for cap, ratio in [(-100.0, 0.15), (0.0, 0.15), (100.0, -0.1), (100.0, 1.0), (100.0, 1.5)]:
