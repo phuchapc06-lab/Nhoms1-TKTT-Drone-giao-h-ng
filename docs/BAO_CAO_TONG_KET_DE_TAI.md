@@ -54,16 +54,17 @@ Thực nghiệm được tiến hành đối sánh giữa giải thuật đề x
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **$N = 6$** | 3 | 328.09 | 283.32 | **13.65%** | **14.42%** | 83.3% | **100.0%** | **18.66%** |
 | **$N = 10$** | 3 | 377.25 | 289.53 | **23.25%** | **16.90%** | 80.0% | **100.0%** | **21.50%** |
-| **$N = 20$** | 6 | 517.00 | 448.03 | **13.34%** | **9.78%** | 95.0% | **95.0%** | **10.90%** |
-| **$N = 30$** | 9 | 695.47 | 618.21 | **11.11%** | **9.63%** | 93.3% | **100.0%** | **12.24%** |
-| **$N = 50$** | 15 | 1466.72 | 1430.79 | **2.45%** | **2.30%** | 96.0% | **96.0%** | **1.96%** |
+| **$N = 20$** | 6 | 518.70 | 453.61 | **12.55%** | **8.02%** | 95.0% | **100.0%** | **10.83%** |
+| **$N = 30$** | 9 | 696.97 | 618.21 | **11.30%** | **9.73%** | 96.7% | **100.0%** | **10.81%** |
+| **$N = 50$** | 15 | 1469.54 | 1423.89 | **3.11%** | **3.28%** | 96.0% | **96.0%** | **3.84%** |
 
-*Nguồn số liệu: `BenchmarkEvaluator.evaluate_scale` (`src/utils/benchmark_evaluator.py`, seed 42, số Drone $K = \max(3, \lceil N / 3.5 \rceil)$), chạy với EnergyManager sau commit `faea2f0` (depot được dùng làm điểm sạc), lưu tại `data/processed/benchmark_comparison_results.csv`.*
+*Nguồn số liệu: `BenchmarkEvaluator.evaluate_scale` (`src/utils/benchmark_evaluator.py`, seed 42, số Drone $K = \max(3, \lceil N / 3.5 \rceil)$), chạy ngày 26/10 với EnergyManager sau commit `faea2f0` (depot được dùng làm điểm sạc) và 2-Opt có kiểm tra chi phí (chỉ giữ bước đảo không làm tăng chi phí tuyến), lưu tại `data/processed/benchmark_comparison_results.csv`.*
 
 ### Nhận xét:
-- Về quãng đường và năng lượng, giải thuật di truyền GA giúp tiết kiệm trung bình **12.8%** quãng đường, **10.6%** điện năng tiêu thụ và **13.1%** tổng chi phí so với thuật toán Greedy trên 5 quy mô. Mức chênh lệch nhỏ dần ở quy mô lớn (chi phí tiết kiệm 18.7% - 21.5% ở $N \le 10$, 10.9% - 12.2% ở $N = 20, 30$, còn **2.0%** ở $N = 50$), vì cấu hình đo cho GA số thế hệ tăng chậm ($\max(120, 8N)$, tức 400 thế hệ ở $N = 50$) trong khi bài toán lớn cần nhiều thế hệ hơn để hội tụ.
-- Về thời gian giao hàng, GA kiểm soát tốt khung giờ nhờ hàm phạt trong FitnessCalculator, duy trì tỷ lệ đúng giờ **95% - 100%**, bằng hoặc cao hơn Greedy (80% - 96%) ở mọi quy mô.
+- Về quãng đường và năng lượng, giải thuật di truyền GA giúp tiết kiệm trung bình **12.8%** quãng đường, **10.5%** điện năng tiêu thụ và **13.1%** tổng chi phí so với thuật toán Greedy trên 5 quy mô. Mức chênh lệch nhỏ dần ở quy mô lớn (chi phí tiết kiệm 18.7% - 21.5% ở $N \le 10$, khoảng 10.8% ở $N = 20, 30$, còn **3.8%** ở $N = 50$), vì cấu hình đo cho GA số thế hệ tăng chậm ($\max(120, 8N)$, tức 400 thế hệ ở $N = 50$) trong khi bài toán lớn cần nhiều thế hệ hơn để hội tụ.
+- Về thời gian giao hàng, GA kiểm soát tốt khung giờ nhờ hàm phạt trong FitnessCalculator, duy trì tỷ lệ đúng giờ **96% - 100%**, bằng hoặc cao hơn Greedy (80% - 96.7%) ở mọi quy mô.
 - Ở cả 5 quy mô, không lộ trình nào của hai phương pháp bị cạn pin (0 tuyến không an toàn theo `BenchmarkEvaluator.check_route_battery_safety`, kiểm tra mức pin không âm trên từng chặng). Khi chặng kế tiếp làm pin xuống dưới ngưỡng 15%, EnergyManager tự chèn trạm sạc hoặc cho Drone ghé depot để sạc.
+- **Quy mô lớn (benchmark 100 và 500 điểm, `docs/GA_TUNING_RESULTS.md` mục 13; GA 2000 thế hệ, 100 cá thể):** GA rẻ hơn Greedy 9.1% ở 100 điểm; ở 500 điểm GA đắt hơn 7.7% nhưng lời giải Greedy có 1 (100 điểm) và 6 (500 điểm) Drone cạn pin giữa đường nên bị validator đánh dấu **không hợp lệ**, còn mọi lời giải GA đều hợp lệ.
 
 ---
 
