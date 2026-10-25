@@ -298,13 +298,15 @@ class UAVRoutingPipeline:
         self,
         generations: Optional[int] = None,
         pop_size: Optional[int] = None,
-        seed_greedy: bool = True
+        seed_greedy: bool = True,
+        num_workers: Optional[int] = None
     ) -> Tuple[List[List[int]], List[float]]:
         """
         Tích hợp giải thuật Di truyền GA chính thức của Thành viên 1 (GA Core Engine).
         Hỗ trợ:
         - Khởi tạo từ lời giải Greedy (Seeding) để đảm bảo GA luôn tốt hơn hoặc bằng Greedy.
         - Tích hợp EnergyManager để GA chấm điểm sau khi chèn trạm sạc.
+        - Đánh giá fitness song song với num_workers tiến trình (None hoặc 1 -> tuần tự).
         - Tự động fallback nếu có lỗi.
         """
         try:
@@ -323,6 +325,8 @@ class UAVRoutingPipeline:
                 ga_kwargs["pop_size"] = pop_size
             if generations is not None:
                 ga_kwargs["generations"] = generations
+            if num_workers is not None:
+                ga_kwargs["num_workers"] = num_workers
 
             ga = GeneticAlgorithm(**ga_kwargs)
             solution, best_fitness, history_fitness = ga.evolve()
@@ -447,7 +451,9 @@ class UAVRoutingPipeline:
             solution, history_fitness = self.solve_ga(
                 generations=generations,
                 pop_size=pop_size,
-                seed_greedy=seed_greedy
+                seed_greedy=seed_greedy,
+                # Cờ song song áp dụng cả cho GA (TV1); không chỉ định số tiến trình -> dùng mọi nhân CPU
+                num_workers=(num_workers or os.cpu_count()) if parallel else None
             )
             algo_name = "Thuật toán Di truyền (A* + Genetic Algorithm)"
         elif algorithm.lower() == "greedy":

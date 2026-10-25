@@ -3,7 +3,7 @@
 **Sinh viên thực hiện:** Nguyễn Hải Anh  
 **Vai trò:** Thành viên 1 — Lập trình Giải thuật Di truyền (GA Core Engine)  
 **Tài khoản GitHub:** `Sieqhart262`  
-**Pull Request:** #3 (`feature/tv1-ga-core`) và #7 (`feature/tv1-ga-tuning`), cả hai đã được Nhóm trưởng (TV5) review và merge  
+**Pull Request:** #3 (`feature/tv1-ga-core`), #7 (`feature/tv1-ga-tuning`) và #8 (`feature/tv1-contribution`) đã được Nhóm trưởng (TV5) review và merge; tuần 5–6: #11 (`feature/tv1-ga-parallel`) và #12 (`feature/tv1-bao-cao-n20-50`)  
 
 ---
 
@@ -20,6 +20,8 @@ Là thành viên phụ trách Giải thuật Di truyền, em (Nguyễn Hải Anh
 | 100 điểm giao (K = 29) | 11471.35 | 21816.01 (kém 90.18%, 4/5 lời giải không hợp lệ) | **11230.08 (tốt hơn 2.10%)** |
 
 Mọi lời giải của GA sau tinh chỉnh đều hợp lệ (5/5 ở cả 3 quy mô). Từ commit `7a24f57` (Ngày 5), pipeline chính của nhóm chạy GA theo đúng cấu hình này.
+
+> **Cập nhật tuần 5–6 (25/10/2026):** bảng trên đo trên dữ liệu benchmark ngày 16/10. Sau khi TV4 đổi khối lượng hàng, em chạy lại trên 10 / 50 / 100 / 500 điểm: GA đề xuất rẻ hơn Greedy **5.68% / 4.66% / 9.68%** ở 10 / 50 / 100 điểm. Ở 500 điểm, GA đắt hơn 11.13% nhưng lời giải Greedy có 6/150 tuyến thiếu pin. Em cũng song song hóa GA, đạt tăng tốc **3.80 lần** với 8 tiến trình ở 500 điểm. Chi tiết ở mục 10.
 
 ---
 
@@ -212,6 +214,34 @@ Với code của thành viên khác, em không sửa âm thầm: em gửi đề 
 | `main.py` mặc định 3 Drone, không chở nổi benchmark 50 và 100 | `main.py` (TV5) | Đề xuất chọn K theo tổng khối lượng hàng | TV5 đã áp dụng (`7a24f57`) |
 | Tiêu đề đường hội tụ đếm cả trạm sạc | `pipeline.py` (TV5) | Báo lỗi | TV5 đã sửa (`7a24f57`) |
 | Một ô `inf` trong ma trận làm mọi fitness bằng 0 | Dữ liệu và ma trận khoảng cách (TV2, TV4) | Báo nhóm | Benchmark hiện không có cặp nào không tới được; pipeline thay `inf` bằng Euclid × 2 |
+| Cờ `--parallel` của `main.py` không có tác dụng với GA | `pipeline.py` (TV5) | TV5 đồng ý cho sửa: `solve_ga` nhận `num_workers` (`c1da04c`) | PR #11 |
+| Bảng §3 của `BAO_CAO_TONG_KET_DE_TAI.md`: dòng N = 20/30/50 không có nguồn, số Drone K sai công thức của `benchmark_evaluator.py` | Báo cáo tổng kết (TV5) | Chạy lại bằng `BenchmarkEvaluator.evaluate_scale`; TV5 đồng ý sửa (`fb6b6d4`) | PR #12 |
+| Lời giải Greedy ở 100 / 500 điểm có 1 / 6 tuyến thiếu pin kể cả sau khi chèn trạm sạc, nhưng validator vẫn báo hợp lệ; phạt 1000 / tuyến quá nhẹ | `validator.py`, `fitness.py` (TV5) | Thêm cột "Tuyến thiếu pin" vào thực nghiệm; gửi đề xuất kèm số liệu | Chờ TV5 phản hồi |
+| 2-Opt làm tuyến đủ pin thành thiếu pin (GA ở 500 điểm: 0 tuyến trước, 1 tuyến sau 2-Opt) | `local_search.py` (TV6) | Đo trước và sau 2-Opt; gửi đề xuất | Chờ TV6 phản hồi |
+| Độ phức tạp GA thiếu số hạng EnergyManager; Định lý 5 phát biểu quá mạnh; bảng mục IV lấy tỷ số thời gian đo làm cột lý thuyết | `COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md` (TV5) | Rà soát, đề xuất thay thế kèm số đo (`docs/GA_COMPLEXITY_REVIEW.md`) | Chờ TV5 phản hồi |
+| Định lý 4: chặng tới trạm sạc được chèn chỉ bảo đảm pin ≥ 0; danh sách trạm sạc được lọc lại ở mỗi lần gọi (~40% thời gian chèn trạm sạc ở 500 điểm) | `energy_manager.py` (TV3) | Đề xuất trong `docs/GA_COMPLEXITY_REVIEW.md` mục 6 | Chờ TV3 phản hồi |
+
+---
+
+### 10. Tuần 5–6: Song song hóa GA, thực nghiệm 10–500 điểm, phân tích độ phức tạp (Weeks 5–6)
+- **Song song hóa đánh giá thích nghi** (`GeneticAlgorithm(num_workers=p)`):
+  - Nhóm tiến trình (`multiprocessing.Pool`) được tạo một lần mỗi lần chạy, dữ liệu bài toán gửi một lần qua `initializer`.
+  - Mỗi thế hệ chỉ gửi các cá thể chưa có trong cache.
+  - Mọi bước ngẫu nhiên vẫn ở tiến trình chính, nên cùng seed thì kết quả **trùng hoàn toàn** với chạy tuần tự. Test 12 trong `tests/test_ga.py` kiểm tra điều này.
+  - Pipeline: cờ `--parallel / --workers` nay áp dụng cho cả GA.
+- **Đo tăng tốc** (lệnh `ga_tuning.py speedup`, 100 cá thể × 200 thế hệ, có EnergyManager): $S_4$ = 2.00 / 2.60 / 2.92 ở 50 / 100 / 500 điểm, $S_8$ = 3.80 ở 500 điểm; đạt tiêu chí 1.8 lần của nhóm từ 50 điểm. Bài 10 điểm chạy song song chậm hơn vì khởi động tiến trình (~0.6 s mỗi tiến trình trên Windows) lâu hơn cả thời gian tính. Biểu đồ: `docs/figures/ga_speedup.png`; chi tiết: `GA_TUNING_RESULTS.md` mục 10.
+- **Thực nghiệm trên dữ liệu mới** (`GA_TUNING_RESULTS.md` mục 11; `compare` có thêm cột đúng giờ và tuyến thiếu pin; chạy 2 lần cùng seed, trùng mọi cột trừ thời gian):
+
+| Quy mô | Greedy + 2-Opt | GA đề xuất | Chênh lệch | Đúng giờ Greedy → GA | Tuyến thiếu pin Greedy → GA |
+| :---: | ---: | ---: | :---: | :---: | :---: |
+| 10 điểm (K = 3) | 749.02 | 706.50 ± 0.00 | **−5.68%** | 100.0% → 100.0% | 0 → 0 |
+| 50 điểm (K = 15) | 4039.25 | 3851.10 ± 68.92 | **−4.66%** | 98.0% → 99.6% | 0 → 0 |
+| 100 điểm (K = 31) | 13030.13 | 11768.55 ± 368.28 | **−9.68%** | 94.0% → 95.6% | 1 → 0 |
+| 500 điểm (K = 150) | 95455.39 | 106080.99 ± 8024.58 | +11.13% | 93.8% → 92.2% | 6 → 1 |
+
+- **Giải thích 500 điểm:** Greedy rẻ hơn vì 6/150 Drone không đủ pin bay hết tuyến mà chỉ bị phạt 1000 mỗi tuyến. GA nhân phạt ×100 nên tìm lời giải đủ pin cho mọi Drone (trước 2-Opt), đổi lại bay xa hơn 17.9%. Tuyến thiếu pin duy nhất của GA do 2-Opt gây ra. GA ở 500 điểm chưa hội tụ sau 2000 thế hệ.
+- **Phân tích độ phức tạp** (`docs/GA_COMPLEXITY_REVIEW.md`): với EnergyManager, mỗi lần đánh giá tốn $O(K \cdot M + L \cdot C)$, nên $T_{GA} = O(G \cdot P \cdot (K \cdot M + L \cdot C + \log P))$; không có EnergyManager là $O(G \cdot P \cdot (L + \log P))$. Đối chiếu số đo: thời gian mỗi thế hệ chia cho $L$ gần như không đổi (0.13–0.14 ms) dù $L$ tăng 54 lần. Viết lại phát biểu Định lý 5 cho chính xác (chỉ đúng theo thước đo chọn lọc, trước 2-Opt) kèm phản ví dụ 500 điểm.
+- **Báo cáo và slide phần GA:** file Word (8 trang) và slide (12 trang, có ghi chú người nói), nộp theo hướng dẫn của TV5.
 
 ---
 
@@ -220,18 +250,24 @@ Với code của thành viên khác, em không sửa âm thầm: em gửi đề 
 2. **Kết quả đẹp mà vi phạm ràng buộc thì không có giá trị.** Luôn xem cột "Hợp lệ" chứ không chỉ nhìn cost, và sửa từ gốc (hệ số phạt) thay vì lọc bỏ lời giải xấu.
 3. **Giả thuyết phải được đo.** Ở 100 điểm, giả thuyết "do 2-Opt" bị số liệu bác bỏ; nguyên nhân thật nằm ở cách chấm điểm tuyến cần sạc.
 4. **Thước đo khi tối ưu phải khớp thước đo khi chấm điểm cuối.** Hai lần GA tối ưu lệch mục tiêu (năng lượng ước lượng, tuyến chưa chèn trạm sạc) đều làm kết quả kém đi rõ rệt.
+5. **Một con số xấu phải được giải thích trước khi kết luận.** Ở 500 điểm, GA "thua" Greedy 11%; truy đến cùng thì thấy Greedy vi phạm ràng buộc pin mà thước đo chung gần như không phạt, và bảng so sánh cần thêm cột tuyến thiếu pin.
+6. **Song song hóa chỉ có lợi khi phần việc đủ nặng.** Đo trên nhiều quy mô mới thấy: bài nhỏ chạy song song còn chậm hơn, bài lớn có EnergyManager mới đạt tăng tốc cao.
 
 ---
 
 ## 📂 DANH MỤC CÁC FILE ĐÃ TẠO VÀ ĐÓNG GÓP
 | STT | Tên File | Chức năng | Trạng thái |
 | :---: | :--- | :--- | :---: |
-| 1 | `src/algorithms/genetic_algorithm.py` | Class `GeneticAlgorithm`: mã hóa và giải mã, toán tử di truyền, vòng lặp tiến hóa, khởi tạo từ Greedy, hệ số phạt, chấm điểm có EnergyManager | Hoàn thành |
-| 2 | `tests/test_ga.py` | 11 unit test cho module GA | Passed 100% |
-| 3 | `src/utils/ga_tuning.py` | Script thực nghiệm quét tham số (`sweep`) và so sánh với Greedy qua pipeline (`compare`) | Hoàn thành |
-| 4 | `docs/GA_TUNING_RESULTS.md` | Báo cáo tinh chỉnh tham số và so sánh GA với Greedy + 2-Opt | Hoàn thành |
+| 1 | `src/algorithms/genetic_algorithm.py` | Class `GeneticAlgorithm`: mã hóa và giải mã, toán tử di truyền, vòng lặp tiến hóa, khởi tạo từ Greedy, hệ số phạt, chấm điểm có EnergyManager, đánh giá song song (`num_workers`) | Hoàn thành |
+| 2 | `tests/test_ga.py` | 12 unit test cho module GA (test 12: song song cho kết quả trùng tuần tự) | Passed 100% |
+| 3 | `src/utils/ga_tuning.py` | Script thực nghiệm: quét tham số (`sweep`), so sánh với Greedy qua pipeline (`compare`, có cột đúng giờ và tuyến thiếu pin), đo tăng tốc (`speedup`), vẽ biểu đồ tăng tốc (`plot-speedup`) | Hoàn thành |
+| 4 | `docs/GA_TUNING_RESULTS.md` | Báo cáo tinh chỉnh tham số, tăng tốc song song (mục 10) và so sánh 10–500 điểm trên dữ liệu mới (mục 11) | Hoàn thành |
 | 5 | `src/algorithms/energy_manager.py` (file của TV3) | Sửa lỗi lặp vô hạn trong `repair_route_with_charging` | Hoàn thành |
 | 6 | `docs/TV1_CONTRIBUTION.md` | Báo cáo chi tiết phần việc và minh chứng đóng góp cá nhân | Hoàn thành |
+| 7 | `src/pipeline.py` (file của TV5, đã được đồng ý) | `solve_ga` nhận `num_workers`; `run_experiment(parallel=True)` truyền xuống GA | Hoàn thành |
+| 8 | `docs/GA_COMPLEXITY_REVIEW.md` | Rà soát phần GA trong tài liệu độ phức tạp của nhóm, đề xuất kèm số đo | Chờ TV5 phản hồi |
+| 9 | `data/processed/ga_speedup_results.csv`, `docs/figures/ga_speedup.png` | Số liệu và biểu đồ tăng tốc song song | Hoàn thành |
+| 10 | `docs/BAO_CAO_TONG_KET_DE_TAI.md` (file của TV5, đã được đồng ý), `data/processed/benchmark_comparison_results.csv` | Chạy lại và sửa 3 dòng N = 20/30/50 của bảng §3 | PR #12 |
 
 ## 🔖 CÁC COMMIT CHÍNH
 | Commit | Ngày | Nội dung | Pull Request |
@@ -244,3 +280,9 @@ Với code của thành viên khác, em không sửa âm thầm: em gửi đề 
 | `8360f14` | 16/10/2026 | Sửa vòng lặp vô hạn trong `energy_manager.py` (code của TV3) | #7 |
 | `e61e77f` | 16/10/2026 | Chấm điểm tuyến sau khi chèn trạm sạc | #7 |
 | `aa7deaa` | 16/10/2026 | Script `ga_tuning.py` và báo cáo `GA_TUNING_RESULTS.md` | #7 |
+| `a0ca6d6` | 25/10/2026 | Đánh giá thích nghi song song (`num_workers`) và test 12 | #11 |
+| `c1da04c` | 25/10/2026 | Pipeline: cờ `parallel / num_workers` áp dụng cho GA | #11 |
+| `7785f5a` | 25/10/2026 | Lệnh `speedup` và kết quả tăng tốc 10–500 điểm | #11 |
+| `f96282f` | 25/10/2026 | `compare` có cột đúng giờ, tuyến thiếu pin; kết quả 10–500 điểm | #11 |
+| `97d92bb` | 25/10/2026 | Rà soát phần GA trong tài liệu độ phức tạp của nhóm | #11 |
+| `fb6b6d4` | 25/10/2026 | Chạy lại số liệu N = 20/30/50 của bảng §3 báo cáo tổng kết | #12 |

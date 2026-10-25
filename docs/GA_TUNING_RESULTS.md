@@ -1,6 +1,8 @@
 # Tinh chỉnh & đánh giá Giải thuật Di truyền (GA)
 **Phụ trách:** Thành viên 1 (GA Core Engine) · **Ngày:** 16/10/2026 · **Script:** `src/utils/ga_tuning.py`
 
+> **Cập nhật 25/10/2026:** mục 1–9 đo trên dữ liệu benchmark ngày 16/10. Sau đó TV4 đã đổi khối lượng hàng. Số liệu trên dữ liệu hiện tại (10 / 50 / 100 / 500 điểm, có tỷ lệ đúng giờ và số tuyến thiếu pin) ở **mục 11**; Speedup song song ở **mục 10**.
+
 ## 1. Kết luận chính
 | Quy mô | Greedy + 2-Opt | GA trước tinh chỉnh (cấu hình cũ của pipeline) | GA sau tinh chỉnh (đề xuất) |
 | :---: | ---: | ---: | ---: |
@@ -122,3 +124,103 @@ python src/utils/ga_tuning.py sweep --scales 50 --pop-sizes 100 --mutation-rates
 python src/utils/ga_tuning.py compare --scales 10 50 100 --seeds 5 --pop-size 100 --mutation-rate 0.5 --generations 2000
 ```
 Lệnh `compare` mất khoảng 1 giờ trên máy thường (phần lớn ở benchmark 100).
+
+## 10. Song song hóa đánh giá fitness (cập nhật 25/10/2026)
+**Thiết kế** (`GeneticAlgorithm(num_workers=p)`): mỗi thế hệ, các cá thể chưa có trong cache (đã bỏ trùng) được chấm điểm trên `p` tiến trình (`multiprocessing.Pool`). Pool tạo một lần cho mỗi lần `evolve()`; dữ liệu bài toán (`nodes`, ma trận, `FitnessCalculator`, `EnergyManager`) gửi một lần qua `initializer`. Chọn lọc, lai ghép, đột biến vẫn chạy ở tiến trình chính, nên cùng seed thì mọi `p` cho **cùng lời giải và cùng history** (script kiểm tra điều này ở mọi dòng bên dưới).
+
+**Thiết lập:**
+- Dữ liệu `data/raw/benchmark_{10,50,100,500}.json` bản trên `develop` ngày 25/10. Khối lượng hàng đã đổi so với mục 2, nên K = 3 / 15 / 31 / 150.
+- GA 100 cá thể × 200 thế hệ, seed 0. Mỗi cấu hình chạy 3 lần, lấy lần nhanh nhất.
+- $T_p$ = `ga.runtime`, **gồm cả thời gian khởi động Pool**.
+- Máy: Intel Core i5-13500H (4 nhân hiệu năng cao + 8 nhân tiết kiệm điện, 16 luồng), Windows 11, Python 3.14.
+- Số liệu gốc: `data/processed/ga_speedup_results.csv`.
+
+| Quy mô (độ dài chromosome) | EnergyManager | $T_1$ (s) | ms / thế hệ ($p$ = 1) | $S_2$ | $S_4$ | $S_8$ | $E_4$ |
+| :---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10 điểm (12) | không | 0.35 | 1.7 | 0.36x | 0.32x | 0.22x | 7.9% |
+| 10 điểm (12) | có | 0.68 | 3.4 | 0.57x | 0.58x | 0.44x | 14.5% |
+| 50 điểm (64) | không | 1.71 | 8.5 | 0.95x | 1.14x | 0.99x | 28.5% |
+| 50 điểm (64) | có | 5.03 | 25.2 | 1.41x | **2.00x** | 2.13x | 50.0% |
+| 100 điểm (130) | không | 3.37 | 16.9 | 1.23x | 1.64x | 1.50x | 41.0% |
+| 100 điểm (130) | có | 13.64 | 68.2 | 1.66x | **2.60x** | 3.17x | 64.9% |
+| 500 điểm (649) | không | 17.08 | 85.4 | 1.54x | **2.00x** | 1.72x | 50.0% |
+| 500 điểm (649) | có | 167.32 | 836.6 | **1.85x** | **2.92x** | **3.80x** | 72.9% |
+
+$S_p = T_1 / T_p$, $E_p = S_p / p$. Đậm: đạt tiêu chí của nhóm ($S \ge 1.8$).
+
+**Phân tích:**
+1. **Tăng tốc phụ thuộc chi phí chấm một cá thể.** Ở 500 điểm có EnergyManager, mỗi lần chấm tốn khoảng 8 ms (chèn trạm sạc cho 150 tuyến), nên 4 tiến trình đạt 2.92x và 8 tiến trình đạt 3.80x. Không có EnergyManager, mỗi lần chấm chỉ khoảng 1 ms, nên 4 tiến trình chỉ đạt 2.00x.
+2. **Bài nhỏ chạy song song chậm hơn.** Ở 10 điểm, cả 200 thế hệ chỉ tốn 0.35–0.68 s, ít hơn thời gian khởi động Pool. Trên Windows, mỗi tiến trình con khởi động Python mới và nạp lại `pipeline` cùng matplotlib (~0.6 s; cả Pool 4 tiến trình ~2.5 s ở 500 điểm). Vì vậy nên để `num_workers=None` (tuần tự) khi N ≤ 50 và không dùng EnergyManager.
+3. **Phần không song song được.** Chỉ số Karp-Flatt $e = (1/S_p - 1/p)/(1 - 1/p)$ ở 500 điểm có EnergyManager là 0.08 / 0.12 / 0.16 với p = 2 / 4 / 8. Phần này gồm khởi động Pool, chọn lọc + OX + đột biến ở tiến trình chính (~7 ms / thế hệ) và chi phí gửi chromosome giữa các tiến trình. $e$ tăng theo p, một phần vì chi phí khởi động Pool tăng theo số tiến trình, một phần do nhân tiết kiệm điện (mục 4).
+4. **Từ 4 lên 8 tiến trình lợi ít.** Tiến trình thứ 5 trở đi chạy trên nhân tiết kiệm điện, chậm hơn. Ở 500 điểm không có EnergyManager, 8 tiến trình còn chậm hơn 4 tiến trình.
+5. **Số đo trên là cận dưới.** Pipeline mặc định chạy 2000 thế hệ, gấp 10 lần ở đây, nên chi phí khởi động Pool (cố định) chiếm tỷ lệ nhỏ hơn nhiều và tăng tốc thực tế sẽ cao hơn. Đây là suy luận, chưa đo.
+
+**Tái lập:**
+```bash
+python src/utils/ga_tuning.py speedup --scales 10 50 100 500 --workers 1 2 4 8 --generations 200 --repeats 3
+```
+Mất khoảng 25 phút; lần đầu chạy 500 điểm cần tính ma trận A* (~50 s với 8 tiến trình, sau đó dùng cache `data/processed/distance_matrix_500.pkl`).
+
+## 11. So sánh với Greedy trên dữ liệu hiện tại, 10–500 điểm (cập nhật 25/10/2026)
+**Thiết lập:**
+- Dữ liệu `data/raw/benchmark_{10,50,100,500}.json` bản trên `develop` ngày 25/10 (tổng hàng 10.5 / 61.9 / 125.7 / 623.2 kg). K = ⌈1.2 × tổng hàng / 5 kg⌉ = 3 / 15 / 31 / 150.
+- Luồng đánh giá như mục 2: thuật toán → 2-Opt → chèn trạm sạc → `FitnessCalculator` → `DataContractValidator`. Không có dòng `[Pipeline] Chạy fallback GA` trong log.
+- **GA đề xuất:** 100 cá thể, 2000 thế hệ, `mutation_rate=0.5`, phạt vi phạm ×100, có EnergyManager, khởi tạo từ Greedy.
+- 10 điểm chạy tuần tự. 50 / 100 / 500 điểm chấm fitness trên 8 tiến trình (mục 10). Song song không đổi lời giải, chỉ đổi thời gian.
+- Seed 0–4 (500 điểm: seed 0–2).
+- Chạy 2 lần cùng seed: mọi cột trùng khớp, trừ thời gian (lệch tới ~30% do máy bận). Bảng dưới lấy lần 2.
+- Cột mới **"Tuyến thiếu pin"**: số tuyến mà `EnergyManager` báo không bay hết được kể cả sau khi chèn trạm sạc. Validator không kiểm tra điều này, còn `FitnessCalculator` chỉ phạt 1000 cho mỗi tuyến.
+
+| Quy mô | K | Greedy + 2-Opt | GA đề xuất (TB ± ĐLC) | Chênh lệch tổng chi phí | Đúng giờ Greedy → GA | Tuyến thiếu pin Greedy → GA | Thời gian GA (s) |
+| :---: | :---: | ---: | ---: | :---: | :---: | :---: | ---: |
+| 10 điểm | 3 | 749.02 | 706.50 ± 0.00 | **−5.68%** | 100.0% → 100.0% | 0 → 0 | 5.5 |
+| 50 điểm | 15 | 4039.25 | 3851.10 ± 68.92 | **−4.66%** | 98.0% → 99.6% | 0 → 0 | 19.1 |
+| 100 điểm | 31 | 13030.13 | 11768.55 ± 368.28 | **−9.68%** | 94.0% → 95.6% | **1 → 0** | 35.4 |
+| 500 điểm | 150 | 95455.39 | 106080.99 ± 8024.58 | +11.13% | 93.8% → 92.2% | **6 → 1** | 298.3 |
+
+Mọi lời giải đều được validator báo hợp lệ (tải trọng, mỗi khách đúng 1 lần, tuyến bắt đầu và kết thúc ở Depot).
+
+**Thang cải tiến ở 10 / 50 / 100 điểm** (chênh lệch tổng chi phí so với Greedy, 5 seed; bảng đầy đủ in ra bởi lệnh ở cuối mục):
+
+| Biến thể GA | 10 điểm | 50 điểm | 100 điểm |
+| :--- | :---: | :---: | :---: |
+| Cấu hình cũ của pipeline (80 thế hệ, 50 cá thể, phạt gốc) | −1.05% | +47.69% (3/5 hợp lệ) | +72.24% (0/5 hợp lệ) |
+| Tham số tinh chỉnh | −2.31% | +4.23% | +8.84% |
+| + EnergyManager | −5.68% | +4.01% | +6.86% |
+| + khởi tạo từ Greedy (GA đề xuất) | **−5.68%** | **−4.66%** | **−9.68%** |
+
+**Phân tích:**
+1. **10–100 điểm:**
+   - GA đề xuất rẻ hơn Greedy 4.7–9.7%, tỷ lệ đúng giờ cao hơn hoặc bằng, và không có tuyến thiếu pin. Ở 100 điểm, Greedy có 1 tuyến thiếu pin.
+   - Khởi tạo từ Greedy là yếu tố quyết định ở 50 và 100 điểm. Không có nó, GA thua Greedy 4–7%.
+2. **500 điểm: tổng chi phí của GA cao hơn 11.13%, nhưng Greedy vi phạm ràng buộc pin.**
+   - **Greedy:** tổng chi phí 95455.39 = 29573.35 (quãng đường) + 1.5 × 39120.12 (năng lượng) + 1201.85 (trễ giờ) + **6000** (6 tuyến thiếu pin × 1000). 6 trên 150 Drone không bay hết được tuyến.
+   - **Mức phạt quá nhẹ:** 1000 mỗi tuyến chỉ bằng ~1% tổng chi phí, nên Greedy vẫn "rẻ".
+   - **Vì sao điểm khởi tạo không còn tác dụng:** khi chọn lọc, GA nhân phần phạt này lên 100 lần, nên chấm lời giải Greedy là 689455.39. Như vậy GA phải tự tìm từ đầu một lời giải đủ pin.
+   - **GA:** trước 2-Opt, cả 3 seed đều không có tuyến thiếu pin, nhưng phải bay xa hơn 17.9% (34874 so với 29573).
+   - **Không tính phạt pin:** Greedy 89455, GA 105081.
+3. **2-Opt làm hỏng pin.**
+   - Ở 500 điểm, lời giải GA có 0 tuyến thiếu pin trước 2-Opt và 1 tuyến sau 2-Opt, ở cả 3 seed.
+   - 2-Opt (TV6) chỉ xét quãng đường, nên có thể đảo thứ tự giao khiến Drone chở nặng bay chặng xa.
+   - Cũng vì chỉ xét quãng đường, 2-Opt có thể làm tăng tổng chi phí: Greedy ở 50 điểm có chi phí 4002.00 trước 2-Opt và 4039.25 sau 2-Opt.
+4. **Hội tụ:**
+   - Cost chọn lọc trung bình giảm trong 1/4 số thế hệ cuối: 0% / 0.55% / 1.92% / 1.21% ở 10 / 50 / 100 / 500 điểm.
+   - Ở 100 và 500 điểm, GA chưa hội tụ sau 2000 thế hệ. Độ lệch chuẩn ở 500 điểm lớn (±7.6%), nên chạy thêm thế hệ sẽ còn cải thiện.
+5. **Thời gian:** 500 điểm mất ~5 phút cho mỗi lần chạy GA với 8 tiến trình. Theo mục 10 ($S_8$ = 3.80), chạy tuần tự ước tính mất khoảng 19 phút (298 s × 3.80).
+
+**Đề xuất cho nhóm (gửi TV5 / TV6, không tự sửa):**
+1. `DataContractValidator` (TV5) kiểm tra thêm pin: tuyến mà `EnergyManager` báo không khả thi thì phải là không hợp lệ. Báo cáo cần có số tuyến thiếu pin.
+2. Câu "100% lộ trình bay … đảm bảo mức pin an toàn" trong `BAO_CAO_TONG_KET_DE_TAI.md` §3 chỉ đúng tới 50 điểm. Ở 100 và 500 điểm, Greedy có 1 và 6 tuyến thiếu pin.
+3. 2-Opt (TV6) hoặc pipeline chỉ nhận một bước đảo đoạn nếu tuyến vẫn đủ pin (hoặc tổng chi phí không tăng).
+
+**Hạn chế:**
+- 500 điểm chỉ chạy 3 seed và 2000 thế hệ.
+- Thời gian chạy bị nhiễu do máy bận.
+- Số Drone K chọn theo quy tắc dư 20% sức chở.
+
+**Tái lập** (khoảng 45 phút):
+```bash
+python src/utils/ga_tuning.py compare --scales 10 --seeds 5 --pop-size 100 --mutation-rate 0.5 --generations 2000
+python src/utils/ga_tuning.py compare --scales 50 100 --seeds 5 --pop-size 100 --mutation-rate 0.5 --generations 2000 --workers 8
+python src/utils/ga_tuning.py compare --scales 500 --seeds 3 --pop-size 100 --mutation-rate 0.5 --generations 2000 --workers 8 --only-proposed
+```
