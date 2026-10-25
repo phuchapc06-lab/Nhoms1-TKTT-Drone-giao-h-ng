@@ -6,7 +6,12 @@ Biểu diễn nhiễm sắc thể (Chromosome):
     Hoán vị các ID khách hàng xen kẽ K-1 vách ngăn mang số âm (-1, -2, ..., -(K-1)).
     Mỗi đoạn nằm giữa hai vách ngăn là tuyến bay của một Drone.
     Ví dụ (K = 3): [3, 1, -1, 5, 2, -2, 4]  ->  [[0, 3, 1, 0], [0, 5, 2, 0], [0, 4, 0]]
+
+Song song hóa (num_workers > 1): mỗi thế hệ, các cá thể chưa có trong cache được đánh giá trên
+nhiều tiến trình (multiprocessing.Pool). Mọi bước ngẫu nhiên vẫn chạy ở tiến trình chính và hai cách
+dùng chung hàm _evaluate_chromosome, nên cùng seed thì kết quả trùng với khi chạy tuần tự.
 """
+import multiprocessing
 import random
 import time
 from typing import List, Dict, Tuple, Any, Optional
@@ -16,6 +21,52 @@ from algorithms.fitness import FitnessCalculator
 DEPOT_ID = 0
 
 Chromosome = List[int]
+
+
+def decode_chromosome(chromosome: Chromosome) -> List[List[int]]:
+    """
+    Giải mã chromosome thành lời giải theo Data Contract.
+    Cắt dãy tại các vách ngăn (số âm); tuyến rỗng (hai vách ngăn liền nhau) bị bỏ qua.
+    """
+    solution: List[List[int]] = []
+    current: List[int] = []
+    for gene in chromosome:
+        if gene < 0:
+            if current:
+                solution.append([DEPOT_ID] + current + [DEPOT_ID])
+            current = []
+        else:
+            current.append(gene)
+    if current:
+        solution.append([DEPOT_ID] + current + [DEPOT_ID])
+    return solution
+
+
+def _evaluate_chromosome(
+    chromosome: Chromosome, nodes: Dict[int, Dict[str, Any]], dist_matrix: Any,
+    fitness_calc: FitnessCalculator, energy_manager: Optional[Any], penalty_factor: float
+) -> Tuple[float, float, Dict[str, float]]:
+    """Lõi đánh giá một cá thể, dùng chung cho chạy tuần tự và song song (xem GeneticAlgorithm._evaluate)."""
+    solution = decode_chromosome(chromosome)
+    if energy_manager is not None and hasattr(energy_manager, "repair_route_with_charging"):
+        solution = [energy_manager.repair_route_with_charging(route, dist_matrix, nodes)[0] for route in solution]
+    _, cost, breakdown = fitness_calc.evaluate_solution(solution, dist_matrix, nodes, energy_manager)
+    penalized = cost + (penalty_factor - 1.0) * breakdown["cap_penalty"]
+    return 1000.0 / (penalized + 1.0), cost, breakdown
+
+
+# Dữ liệu dùng chung của mỗi tiến trình con, gửi một lần qua initializer của Pool
+# (không gửi lại ma trận khoảng cách mỗi thế hệ)
+_worker_context: Optional[Tuple[Any, ...]] = None
+
+
+def _init_worker(*context: Any) -> None:
+    global _worker_context
+    _worker_context = context
+
+
+def _evaluate_in_worker(chromosome: Chromosome) -> Tuple[float, float, Dict[str, float]]:
+    return _evaluate_chromosome(chromosome, *_worker_context)
 
 
 class GeneticAlgorithm:
@@ -35,7 +86,8 @@ class GeneticAlgorithm:
         elitism: int = 2,
         seed: Optional[int] = None,
         initial_solutions: Optional[List[List[List[int]]]] = None,
-        constraint_penalty_factor: float = 100.0
+        constraint_penalty_factor: float = 100.0,
+        num_workers: Optional[int] = None
     ):
         """
         Khởi tạo GA cho đội bay K Drone.
@@ -51,6 +103,7 @@ class GeneticAlgorithm:
             seed: seed của bộ sinh số ngẫu nhiên riêng (cùng seed -> cùng kết quả).
             initial_solutions: lời giải có sẵn (vd. Greedy của TV6) đưa vào quần thể ban đầu.
             constraint_penalty_factor: hệ số nhân phần phạt quá tải / cạn pin khi chọn lọc (1 -> fitness gốc của TV5).
+            num_workers: số tiến trình đánh giá fitness song song (None hoặc 1 -> chạy tuần tự).
         Báo ValueError nếu tham số không hợp lệ hoặc không có điểm giao hàng nào.
         """
         if num_drones < 1:
@@ -67,6 +120,8 @@ class GeneticAlgorithm:
             raise ValueError("elitism phải nằm trong [0, pop_size)")
         if constraint_penalty_factor < 1.0:
             raise ValueError("constraint_penalty_factor phải >= 1")
+        if num_workers is not None and num_workers < 1:
+            raise ValueError("num_workers phải >= 1 (hoặc None để chạy tuần tự)")
 
         self.nodes = nodes
         self.dist_matrix = dist_matrix
@@ -83,6 +138,7 @@ class GeneticAlgorithm:
         # delta của FitnessCalculator quá nhẹ ở quy mô lớn: quá tải 0.05 kg chỉ bị phạt 50 trong cost ~10^4,
         # nên GA chấp nhận vi phạm nhỏ. Đặt 1.0 để dùng nguyên fitness của TV5.
         self.constraint_penalty_factor = constraint_penalty_factor
+        self.num_workers = num_workers or 1
 
         # Bộ sinh số ngẫu nhiên riêng -> không ảnh hưởng random toàn cục của module khác
         self.rng = random.Random(seed)
@@ -122,18 +178,7 @@ class GeneticAlgorithm:
         Giải mã chromosome thành lời giải theo Data Contract.
         Cắt dãy tại các vách ngăn (số âm); tuyến rỗng (hai vách ngăn liền nhau) bị bỏ qua.
         """
-        solution: List[List[int]] = []
-        current: List[int] = []
-        for gene in chromosome:
-            if gene < 0:
-                if current:
-                    solution.append([DEPOT_ID] + current + [DEPOT_ID])
-                current = []
-            else:
-                current.append(gene)
-        if current:
-            solution.append([DEPOT_ID] + current + [DEPOT_ID])
-        return solution
+        return decode_chromosome(chromosome)
 
     def encode(self, solution: List[List[int]]) -> Chromosome:
         """
@@ -183,18 +228,27 @@ class GeneticAlgorithm:
         """
         key = tuple(chromosome)
         if key not in self._cache:
-            solution = self.decode(chromosome)
-            if self.energy_manager is not None and hasattr(self.energy_manager, "repair_route_with_charging"):
-                solution = [
-                    self.energy_manager.repair_route_with_charging(route, self.dist_matrix, self.nodes)[0]
-                    for route in solution
-                ]
-            _, cost, breakdown = self.fitness_calc.evaluate_solution(
-                solution, self.dist_matrix, self.nodes, self.energy_manager
-            )
-            penalized = cost + (self.constraint_penalty_factor - 1.0) * breakdown["cap_penalty"]
-            self._cache[key] = (1000.0 / (penalized + 1.0), cost, breakdown)
+            self._cache[key] = _evaluate_chromosome(chromosome, *self._evaluation_context())
         return self._cache[key]
+
+    def _evaluation_context(self) -> Tuple[Any, ...]:
+        """Tham số cố định của _evaluate_chromosome (gửi một lần cho mỗi tiến trình con khi chạy song song)."""
+        return (self.nodes, self.dist_matrix, self.fitness_calc, self.energy_manager, self.constraint_penalty_factor)
+
+    def _evaluate_population(
+        self, population: List[Chromosome], pool: Optional[Any] = None
+    ) -> List[Tuple[float, float, Dict[str, float]]]:
+        """
+        Đánh giá cả quần thể. Có pool: các cá thể chưa có trong cache (đã bỏ trùng) được tính
+        song song trước, rồi đọc kết quả từ cache theo đúng thứ tự quần thể.
+        """
+        if pool is not None:
+            pending = list(dict.fromkeys(tuple(c) for c in population if tuple(c) not in self._cache))
+            if pending:
+                chunksize = max(1, len(pending) // (self.num_workers * 4))
+                for key, evaluation in zip(pending, pool.map(_evaluate_in_worker, pending, chunksize)):
+                    self._cache[key] = evaluation
+        return [self._evaluate(c) for c in population]
 
     def _fitness(self, chromosome: Chromosome) -> float:
         """Fitness dùng để chọn lọc (đã nhân hệ số phạt vi phạm), xem _evaluate."""
@@ -273,30 +327,41 @@ class GeneticAlgorithm:
             - best_fitness: độ thích nghi (dùng để chọn lọc, xem _evaluate) của lời giải đó
             - history: best fitness tốt nhất tính đến mỗi thế hệ (dùng cho UAVVisualizer.plot_convergence_curve)
         Sau khi chạy có thêm các thuộc tính: best_chromosome, best_cost, best_breakdown (giá trị của TV5),
-        runtime (giây). best_solution chưa chứa trạm sạc; khi có EnergyManager, best_cost là cost sau khi chèn trạm sạc.
+        runtime (giây, gồm cả thời gian khởi động các tiến trình con khi chạy song song).
+        best_solution chưa chứa trạm sạc; khi có EnergyManager, best_cost là cost sau khi chèn trạm sạc.
         """
         start = time.perf_counter()
         best_chromosome: Optional[Chromosome] = None
         best_eval: Optional[Tuple[float, float, Dict[str, float]]] = None
         history: List[float] = []
 
-        population = self._init_population()
-        fitnesses: List[float] = []
-        for gen in range(self.generations):
-            if gen > 0:
-                population = self._next_generation(population, fitnesses)
+        pool = None
+        if self.num_workers > 1:
+            pool = multiprocessing.Pool(
+                self.num_workers, initializer=_init_worker, initargs=self._evaluation_context()
+            )
+        try:
+            population = self._init_population()
+            fitnesses: List[float] = []
+            for gen in range(self.generations):
+                if gen > 0:
+                    population = self._next_generation(population, fitnesses)
 
-            evaluations = [self._evaluate(c) for c in population]
-            fitnesses = [ev[0] for ev in evaluations]
-            # Chỉ giữ cache của quần thể hiện tại: đủ để thế hệ sau dùng lại cho elite / bản sao,
-            # và bộ nhớ không phình theo số thế hệ (quan trọng với benchmark 500 điểm)
-            self._cache = {tuple(c): ev for c, ev in zip(population, evaluations)}
+                evaluations = self._evaluate_population(population, pool)
+                fitnesses = [ev[0] for ev in evaluations]
+                # Chỉ giữ cache của quần thể hiện tại: đủ để thế hệ sau dùng lại cho elite / bản sao,
+                # và bộ nhớ không phình theo số thế hệ (quan trọng với benchmark 500 điểm)
+                self._cache = {tuple(c): ev for c, ev in zip(population, evaluations)}
 
-            gen_best = max(range(len(population)), key=fitnesses.__getitem__)
-            if best_eval is None or fitnesses[gen_best] > best_eval[0]:
-                best_chromosome = population[gen_best][:]
-                best_eval = evaluations[gen_best]
-            history.append(best_eval[0])
+                gen_best = max(range(len(population)), key=fitnesses.__getitem__)
+                if best_eval is None or fitnesses[gen_best] > best_eval[0]:
+                    best_chromosome = population[gen_best][:]
+                    best_eval = evaluations[gen_best]
+                history.append(best_eval[0])
+        finally:
+            if pool is not None:
+                pool.terminate()
+                pool.join()
 
         self.best_chromosome = best_chromosome
         self.best_solution = self.decode(best_chromosome)

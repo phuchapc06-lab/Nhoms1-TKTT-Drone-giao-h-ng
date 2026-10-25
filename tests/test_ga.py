@@ -330,6 +330,32 @@ def test_energy_manager_with_charging():
     print("-> Danh gia sau khi chen tram sac hoat dong chinh xac!")
 
 
+def test_parallel_matches_sequential():
+    print("\n12. Kiem tra danh gia song song (num_workers) cho ket qua trung chay tuan tu:")
+    nodes, dist = make_mock_data()
+
+    try:
+        GeneticAlgorithm(nodes, dist, num_drones=3, num_workers=0)
+        assert False, "num_workers=0 phai bao loi"
+    except ValueError:
+        pass
+
+    for energy_manager in (None, EnergyManager(battery_capacity=80.0)):
+        kwargs = dict(num_drones=3, pop_size=30, generations=25, energy_manager=energy_manager, seed=7)
+        seq = GeneticAlgorithm(nodes, dist, **kwargs)
+        par = GeneticAlgorithm(nodes, dist, num_workers=2, **kwargs)
+        assert seq.evolve() == par.evolve(), "Cung seed: song song phai trung tuan tu (loi giai + history)"
+        assert (seq.best_cost, seq.best_breakdown) == (par.best_cost, par.best_breakdown)
+        print(f"-> EnergyManager={'co' if energy_manager else 'khong'}: cost={par.best_cost:.2f}, "
+              f"tuan tu {seq.runtime:.2f}s / song song 2 tien trinh {par.runtime:.2f}s")
+
+    # K = 1 (khong co vach ngan) van chay song song duoc
+    solution, _, _ = GeneticAlgorithm(nodes, dist, num_drones=1, pop_size=10, generations=5,
+                                      num_workers=2, seed=1).evolve()
+    assert len(solution) == 1
+    print("-> Danh gia song song hoat dong chinh xac!")
+
+
 def save_demo_plots(out_dir):
     """Chay GA tren du lieu gia lap va luu hinh tuyen bay + duong hoi tu (de xem bang mat)."""
     nodes, dist = make_mock_data()
@@ -363,6 +389,7 @@ if __name__ == "__main__":
     test_seed_reproducible()
     test_encode_and_initial_solutions()
     test_energy_manager_with_charging()
+    test_parallel_matches_sequential()
 
     # Hinh demo luu vao data/processed/ (thu muc nay da bi .gitignore)
     save_demo_plots(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "processed")))
