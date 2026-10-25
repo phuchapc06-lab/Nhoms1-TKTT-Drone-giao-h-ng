@@ -186,7 +186,7 @@ class BenchmarkEvaluator:
         sol_greedy = pipeline.solve_greedy()
         try:
             from algorithms.local_search import apply_2opt_to_solution
-            sol_greedy = apply_2opt_to_solution(sol_greedy, pipeline.dist_matrix)
+            sol_greedy = apply_2opt_to_solution(sol_greedy, pipeline.dist_matrix, pipeline.route_cost_after_charging)
         except Exception:
             pass
         if pipeline.energy_manager:
@@ -207,7 +207,7 @@ class BenchmarkEvaluator:
         sol_ga, hist_ga = pipeline.solve_ga(generations=ga_generations, pop_size=ga_pop_size)
         try:
             from algorithms.local_search import apply_2opt_to_solution
-            sol_ga = apply_2opt_to_solution(sol_ga, pipeline.dist_matrix)
+            sol_ga = apply_2opt_to_solution(sol_ga, pipeline.dist_matrix, pipeline.route_cost_after_charging)
         except Exception:
             pass
         if pipeline.energy_manager:
