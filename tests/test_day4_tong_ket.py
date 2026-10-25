@@ -15,6 +15,10 @@ import sys
 import unittest
 import pandas as pd
 
+# In tiếng Việt UTF-8 (console Windows mặc định cp1252 làm lỗi UnicodeEncodeError)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # Thiết lập sys.path hỗ trợ cả chạy trực tiếp và chạy qua runner
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 src_dir = os.path.join(project_root, "src")
@@ -131,7 +135,11 @@ class TestDay4TongKet(unittest.TestCase):
         self.assertTrue(res["is_valid"])
 
         validator = DataContractValidator()
-        self.assertTrue(validator.validate_solution(res["solution"], pipeline.nodes))
+        # validate_solution trả về (is_valid, errors): phải lấy phần tử đầu (tuple khác rỗng luôn là True)
+        is_valid, errors = validator.validate_solution(
+            res["solution"], pipeline.nodes, pipeline.drone_capacity, pipeline.dist_matrix, pipeline.energy_manager
+        )
+        self.assertTrue(is_valid, errors)
 
 
 if __name__ == "__main__":

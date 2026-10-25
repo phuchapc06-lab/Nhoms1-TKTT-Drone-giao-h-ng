@@ -99,6 +99,21 @@ class TestGreedyBaseline(unittest.TestCase):
         self.assertEqual(improved[0][-1], 0)
         self.assertEqual(improved[1], [0, 4, 0])
 
+    def test_apply_2opt_with_route_cost_guard(self):
+        """route_cost: chỉ giữ kết quả 2-Opt khi chi phí tuyến không tăng (2-Opt chỉ xét quãng đường)."""
+        crossed = [0, 2, 1, 3, 0]
+        plain = apply_2opt_to_solution([crossed], self.dist_matrix)[0]
+        self.assertNotEqual(plain, crossed)  # 2-Opt có đảo đoạn ở tuyến này
+
+        def route_dist(r):
+            return sum(self.dist_matrix[r[i], r[i + 1]] for i in range(len(r) - 1))
+
+        # Chi phí đi theo quãng đường -> nhận kết quả 2-Opt
+        self.assertEqual(apply_2opt_to_solution([crossed], self.dist_matrix, route_dist)[0], plain)
+        # Chi phí tăng sau khi đảo (vd. chở nặng bay chặng xa) -> giữ tuyến cũ
+        prefer_original = lambda r: 0.0 if r == crossed else 1.0
+        self.assertEqual(apply_2opt_to_solution([crossed], self.dist_matrix, prefer_original)[0], crossed)
+
     def test_greedy_integration_with_energy_and_fitness(self):
         """Kiểm tra tích hợp Greedy với EnergyManager và FitnessCalculator."""
         router = GreedyRouter(

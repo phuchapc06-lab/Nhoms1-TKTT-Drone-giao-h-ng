@@ -426,6 +426,16 @@ class UAVRoutingPipeline:
 
         return best_solution, history_fitness
 
+    def route_cost_after_charging(self, route: List[int]) -> float:
+        """
+        Chi phí của 1 tuyến sau khi chèn trạm sạc (quãng đường, năng lượng, trễ giờ, phạt quá tải / thiếu pin).
+        Dùng làm thước đo cho 2-Opt: chỉ nhận bước đảo đoạn khi chi phí tuyến không tăng.
+        """
+        if self.energy_manager:
+            route = self.energy_manager.repair_route_with_charging(route, self.dist_matrix, self.nodes)[0]
+        cost, _ = self.fitness_calc.calculate_route_cost(route, self.dist_matrix, self.nodes, self.energy_manager)
+        return cost
+
     def run_experiment(
         self,
         algorithm: str = "ga",
@@ -463,11 +473,12 @@ class UAVRoutingPipeline:
             raise ValueError(f"Khong ho tro thuat toan: {algorithm}")
 
         # 1. Áp dụng tối ưu cục bộ 2-Opt (TV6) để gỡ các giao cắt đường bay
+        #    (chỉ nhận kết quả 2-Opt khi chi phí tuyến sau chèn trạm sạc không tăng)
         try:
             from algorithms.local_search import apply_2opt_to_solution
-            solution = apply_2opt_to_solution(solution, self.dist_matrix)
-        except Exception:
-            pass
+            solution = apply_2opt_to_solution(solution, self.dist_matrix, self.route_cost_after_charging)
+        except Exception as e:
+            print(f"[Pipeline] Bỏ qua 2-Opt do lỗi: {e}")
 
         # 2. Kiểm tra Pin & Tự động chèn trạm sạc khi pin < ngưỡng an toàn (TV3)
         if self.energy_manager:
@@ -483,7 +494,9 @@ class UAVRoutingPipeline:
         fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(
             solution, self.dist_matrix, self.nodes, self.energy_manager
         )
-        is_valid, validation_errors = self.validator.validate_solution(solution, self.nodes, self.drone_capacity)
+        is_valid, validation_errors = self.validator.validate_solution(
+            solution, self.nodes, self.drone_capacity, self.dist_matrix, self.energy_manager
+        )
 
         on_time_rate = float(breakdown.get("on_time_rate", 100.0))
         res = {

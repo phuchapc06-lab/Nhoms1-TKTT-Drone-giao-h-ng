@@ -6,7 +6,7 @@ Chức năng:
 - Gỡ các đường bay chéo nhau, tối ưu lại thứ tự giao hàng trên từng tuyến Drone.
 - Rút ngắn khoảng cách di chuyển từ 5% đến 15% cho cả lời giải Greedy và GA.
 """
-from typing import List, Any
+from typing import List, Any, Callable, Optional
 
 def two_opt_route(route: List[int], dist_matrix: Any, max_iterations: int = 50) -> List[int]:
     """
@@ -50,8 +50,21 @@ def two_opt_route(route: List[int], dist_matrix: Any, max_iterations: int = 50) 
 
     return best_route
 
-def apply_2opt_to_solution(solution: List[List[int]], dist_matrix: Any) -> List[List[int]]:
+def apply_2opt_to_solution(
+    solution: List[List[int]],
+    dist_matrix: Any,
+    route_cost: Optional[Callable[[List[int]], float]] = None
+) -> List[List[int]]:
     """
     Áp dụng thuật toán 2-Opt tối ưu hóa cho toàn bộ các tuyến của đội bay UAV.
+    route_cost (tùy chọn): hàm tính chi phí của 1 tuyến. Khi được truyền vào, chỉ giữ tuyến sau 2-Opt
+    nếu chi phí không tăng. 2-Opt chỉ xét quãng đường nên có thể đảo thứ tự giao khiến Drone chở nặng
+    bay chặng xa (tốn năng lượng hơn, trễ giờ, thậm chí cạn pin).
     """
-    return [two_opt_route(route, dist_matrix) for route in solution]
+    result = []
+    for route in solution:
+        new_route = two_opt_route(route, dist_matrix)
+        if route_cost is not None and new_route != route and route_cost(new_route) > route_cost(route):
+            new_route = route[:]
+        result.append(new_route)
+    return result

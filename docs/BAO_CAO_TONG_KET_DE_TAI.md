@@ -81,12 +81,12 @@ Việc tính toán ma trận khoảng cách $A^*$ trên bản đồ có vùng c�
 
 ## 5. TỔNG KẾT ĐỘ PHỨC TẠP THUẬT TOÁN & CHỨNG MINH TOÁN HỌC
 
-Báo cáo chi tiết về độ phức tạp và chứng minh toán học được lưu tại [`docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md`](file:///C:/Users/Nguyen%20Phuc%20Ha/Desktop/uav-routing-project/docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md). Tóm tắt như sau:
+Báo cáo chi tiết về độ phức tạp và chứng minh toán học được lưu tại [`docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md`](COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md). Tóm tắt như sau:
 
 ### 5.1. Độ phức tạp Asymptotic (Thời gian & Không gian)
 - **$A^*$ Pathfinding:** Thời gian $O(W \cdot H \log(W \cdot H))$, Bộ nhớ $O(W \cdot H)$.
 - **Ma trận Khoảng cách Song song:** Thời gian $O\left(\frac{M^2}{p} \cdot W \cdot H \log(W \cdot H)\right)$, Bộ nhớ $O(W \cdot H + M^2)$.
-- **Giải thuật Di truyền GA:** Thời gian $O(G \cdot P \cdot (N+K))$, Bộ nhớ $O(P \cdot (N+K))$.
+- **Giải thuật Di truyền GA:** với chromosome dài $L = N + K - 1$, thời gian $O(G \cdot P \cdot (L + \log P))$ khi không có EnergyManager và $O(G \cdot P \cdot (L \cdot C + \log P))$ khi chấm điểm có chèn trạm sạc (cấu hình của pipeline); bản song song chia phần đánh giá cho $p$ tiến trình. Bộ nhớ $O(P \cdot L)$.
 - **Greedy Baseline:** Thời gian $O(K \cdot N^2)$, Bộ nhớ $O(N+K)$.
 - **2-Opt Local Search:** Thời gian $O(I \cdot N^2)$, Bộ nhớ $O(N)$.
 - **Energy Manager:** Thời gian $O(N \cdot C)$, Bộ nhớ $O(N+C)$.
@@ -94,9 +94,9 @@ Báo cáo chi tiết về độ phức tạp và chứng minh toán học đư�
 ### 5.2. Các định lý toán học đã được chứng minh:
 1. **Định lý 1:** Tính tối ưu toàn cục và tính nhất quán (Consistency) của hàm Heuristic Octile trong thuật toán $A^*$.
 2. **Định lý 2:** Tính bất biến bảo toàn tính hợp lệ của toán tử Order Crossover (OX) và Swap Mutation trong GA (mỗi khách hàng được phục vụ đúng 1 lần).
-3. **Định lý 3:** Tính đơn điệu không tăng quãng đường và tính dừng hữu hạn bước của thuật toán tối ưu cục bộ 2-Opt ($d_{new} \le d_{old}$).
-4. **Định lý 4:** Tính dừng không lặp vô hạn và tính an toàn pin tuyệt đối ($E \ge 15\%$) của thuật toán tự động chèn trạm sạc.
-5. **Định lý 5:** Tính không suy giảm nghiệm của cơ chế Hybrid GA Seeding kết hợp Elitism ($\text{Cost}_{GA} \le \text{Cost}_{Greedy}$).
+3. **Định lý 3:** Tính đơn điệu không tăng quãng đường và tính dừng hữu hạn bước của thuật toán tối ưu cục bộ 2-Opt ($d_{new} \le d_{old}$). Quãng đường không tăng nhưng tổng chi phí có thể tăng, nên pipeline chỉ giữ bước đảo không làm tăng chi phí tuyến.
+4. **Định lý 4:** Tính dừng của thuật toán tự động chèn trạm sạc (Depot cũng là điểm sạc) và tính an toàn pin có điều kiện: với tuyến được đánh dấu khả thi, pin khi tới điểm giao $\ge 15\%$, khi tới điểm sạc $\ge 0$. Tuyến không sửa được bị đánh dấu thiếu pin và bị validator loại nếu cạn pin.
+5. **Định lý 5:** Tính không suy giảm nghiệm của cơ chế Hybrid GA Seeding kết hợp Elitism theo thước đo chọn lọc của GA ($\text{Cost}_\lambda(S_{GA}) \le \text{Cost}_\lambda(S_{Greedy})$, $\lambda$ là hệ số nhân phạt); khi lời giải Greedy không vi phạm ràng buộc thì $\text{Cost}_{GA} \le \text{Cost}_{Greedy}$ (Greedy trước 2-Opt).
 
 ---
 

@@ -69,6 +69,20 @@ def test_day2():
     assert not is_bad_ok, "Phai bat duoc loi trung diem va bo sot"
     print(f"  -> Bat dung loi trung diem / bo sot khach: PASSED (Phat hien {len(b_errs)} loi)")
 
+    # 1.4 Kiem tra pin (truyen dist_matrix + energy_manager): tuyen can pin giua duong la khong hop le
+    import numpy as np
+    from algorithms.energy_manager import EnergyManager
+    em = EnergyManager(battery_capacity=100.0)
+    dist_test = np.array([[0.0, 40.0, 30.0], [40.0, 0.0, 30.0], [30.0, 30.0, 0.0]])
+    is_sol_ok, s_errs = validator.validate_solution(good_sol, nodes_test, 5.0, dist_test, em)
+    assert is_sol_ok, f"Tuyen du pin nhung bi loi: {s_errs}"   # 0->1->0: 40*1.225 + 40 = 89 < 100
+    long_dist = dist_test * 3                                   # moi tuyen > 100 Wh, khong co tram sac
+    is_bad_ok, b_errs = validator.validate_solution(good_sol, nodes_test, 5.0, long_dist, em)
+    assert not is_bad_ok and len(b_errs) == 2, f"Phai bat duoc 2 tuyen can pin: {b_errs}"
+    is_sol_ok, _ = validator.validate_solution(good_sol, nodes_test, 5.0)   # khong truyen -> khong kiem tra pin
+    assert is_sol_ok
+    print("  -> Bat dung loi tuyen can pin giua duong: PASSED")
+
     # -------------------------------------------------------------
     # 2. KIEM THU INTEGRATION PIPELINE
     # -------------------------------------------------------------
