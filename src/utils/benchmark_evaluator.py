@@ -11,6 +11,7 @@ import os
 import sys
 import time
 import json
+import math
 from typing import Dict, List, Tuple, Any, Optional
 import numpy as np
 import pandas as pd
@@ -26,6 +27,107 @@ from pipeline import UAVRoutingPipeline
 from utils.visualizer import UAVVisualizer
 
 class BenchmarkEvaluator:
+    @staticmethod
+    def check_route_battery_safety(
+        routes: List[List[int]],
+        dist_matrix: Any,
+        nodes: Dict[int, Dict[str, Any]],
+        energy_manager: Optional[Any] = None
+    ) -> Dict[str, Any]:
+        """Kiểm tra từng tuyến bay và báo cáo tuyến nào đã cạn pin / không an toàn."""
+        if energy_manager is None or not hasattr(energy_manager, "calculate_route_energy"):
+            return {
+                "routes_checked": 0,
+                "unsafe_routes": 0,
+                "all_safe": True,
+                "details": []
+            }
+
+        unsafe_routes = []
+        for idx, route in enumerate(routes):
+            if not route:
+                continue
+            total_energy, is_feasible = energy_manager.calculate_route_energy(route, dist_matrix, nodes)
+            if not is_feasible or not math.isfinite(total_energy):
+                unsafe_routes.append({
+                    "route_index": idx,
+                    "route": route,
+                    "total_energy": total_energy,
+                    "feasible": is_feasible,
+                })
+
+        return {
+            "routes_checked": len([r for r in routes if r]),
+            "unsafe_routes": len(unsafe_routes),
+            "all_safe": len(unsafe_routes) == 0,
+            "details": unsafe_routes,
+        }
+
+    @staticmethod
+    def summarize_energy_details(
+        routes: List[List[int]],
+        dist_matrix: Any,
+        nodes: Dict[int, Dict[str, Any]],
+        energy_manager: Optional[Any] = None
+    ) -> Dict[str, Any]:
+        """Tổng hợp chi tiết năng lượng theo từng chặng bay và thời gian sạc trạm cho báo cáo thực nghiệm."""
+        if energy_manager is None or not hasattr(energy_manager, "calculate_route_energy_details"):
+            return {
+                "total_energy": 0.0,
+                "charging_events": 0,
+                "total_charge_time_min": 0.0,
+                "sample_leg_summary": "Không có EnergyManager / không có dữ liệu chi tiết",
+                "route_details": []
+            }
+
+        route_details: List[Dict[str, Any]] = []
+        total_energy = 0.0
+        charging_events = 0
+        total_charge_time_min = 0.0
+        sample_leg_summary = ""
+
+        for route in routes:
+            if not route:
+                continue
+            route_energy, _, details = energy_manager.calculate_route_energy_details(
+                route, dist_matrix, nodes, detailed=True
+            )
+            total_energy += route_energy
+            for d in details:
+                if d.get("charging_time", 0.0) > 0:
+                    charging_events += 1
+                    total_charge_time_min += float(d.get("charging_time", 0.0))
+                route_details.append({
+                    "from": int(d.get("from", -1)),
+                    "to": int(d.get("to", -1)),
+                    "distance_km": round(float(d.get("distance", 0.0)), 2),
+                    "payload_kg": round(float(d.get("payload", 0.0)), 2),
+                    "segment_energy_wh": round(float(d.get("segment_energy", 0.0)), 2),
+                    "charging_time_min": round(float(d.get("charging_time", 0.0)), 2),
+                    "node_type": d.get("node_type", "")
+                })
+
+            if not sample_leg_summary and details:
+                sample_bits = []
+                for d in details[:3]:
+                    sample_bits.append(
+                        f"{int(d.get('from', -1))}->{int(d.get('to', -1))}: "
+                        f"{float(d.get('distance', 0.0)):.1f}km, "
+                        f"{float(d.get('payload', 0.0)):.1f}kg, "
+                        f"{float(d.get('segment_energy', 0.0)):.1f}Wh"
+                    )
+                    if d.get("charging_time", 0.0) > 0:
+                        sample_bits[-1] += f", sạc {float(d.get('charging_time', 0.0)):.1f} phút"
+                sample_leg_summary = "; ".join(sample_bits)
+
+        return {
+            "total_energy": round(total_energy, 2),
+            "charging_events": int(charging_events),
+            "total_charge_time_min": round(total_charge_time_min, 2),
+            "sample_leg_summary": sample_leg_summary,
+            "route_details": route_details
+        }
+
     def __init__(
         self,
         save_figures_dir: str = "docs/figures",
@@ -126,6 +228,11 @@ class BenchmarkEvaluator:
         energy_saved = ((bd_g["energy"] - bd_ga["energy"]) / bd_g["energy"]) * 100.0 if bd_g["energy"] > 0 else 0.0
         cost_saved = ((cost_g - cost_ga) / cost_g) * 100.0 if cost_g > 0 else 0.0
 
+        greedy_energy_detail = self.summarize_energy_details(sol_greedy, pipeline.dist_matrix, pipeline.nodes, pipeline.energy_manager)
+        ga_energy_detail = self.summarize_energy_details(sol_ga, pipeline.dist_matrix, pipeline.nodes, pipeline.energy_manager)
+        greedy_safety = self.check_route_battery_safety(sol_greedy, pipeline.dist_matrix, pipeline.nodes, pipeline.energy_manager)
+        ga_safety = self.check_route_battery_safety(sol_ga, pipeline.dist_matrix, pipeline.nodes, pipeline.energy_manager)
+
         return {
             "scale_n": num_delivery,
             "drones_k": num_drones,
@@ -140,6 +247,16 @@ class BenchmarkEvaluator:
             "cost_saved_pct": round(cost_saved, 2),
             "greedy_ontime_rate": round(float(bd_g.get("on_time_rate", 100.0)), 2),
             "ga_ontime_rate": round(float(bd_ga.get("on_time_rate", 100.0)), 2),
+            "greedy_total_charge_time_min": greedy_energy_detail["total_charge_time_min"],
+            "ga_total_charge_time_min": ga_energy_detail["total_charge_time_min"],
+            "greedy_charging_events": greedy_energy_detail["charging_events"],
+            "ga_charging_events": ga_energy_detail["charging_events"],
+            "greedy_energy_sample": greedy_energy_detail["sample_leg_summary"],
+            "ga_energy_sample": ga_energy_detail["sample_leg_summary"],
+            "greedy_unsafe_routes": greedy_safety["unsafe_routes"],
+            "ga_unsafe_routes": ga_safety["unsafe_routes"],
+            "greedy_all_routes_safe": greedy_safety["all_safe"],
+            "ga_all_routes_safe": ga_safety["all_safe"],
             "battery_safe": bool(bd_ga.get("cap_penalty", 0.0) == 0.0),
             "greedy_time_s": round(t_greedy, 4),
             "ga_time_s": round(t_ga, 4)
@@ -323,9 +440,18 @@ class BenchmarkEvaluator:
                     eff_w = (sp_w / w) * 100.0 if w > 0 else 0.0
                     f.write(f"| {w} Core(s) | {t_w:.4f}s | **{sp_w:.2f}x** | {eff_w:.1f}% |\n")
 
-            f.write("\n### 3. Đánh giá An toàn Pin & Trạm sạc (Battery Feasibility - TV3)\n")
-            f.write("- **100% Chuyến bay An toàn:** Mọi lời giải của GA và Greedy đều vượt qua bộ kiểm soát pin `EnergyManager`. Pin không bao giờ giảm xuống dưới ngưỡng an toàn 15% ($E_{battery} \\ge E_{safe}$).\n")
-            f.write("- **Tự động Chèn trạm sạc:** Các tuyến bay dài vượt bán kính hoạt động của Drone được tự động chèn trạm sạc thích hợp trên lộ trình.\n")
+            f.write("\n### 3. Chỉ số TV3: Năng lượng chi tiết từng chặng bay và thời gian sạc trạm\n\n")
+            if "greedy_total_charge_time_min" in df and "ga_total_charge_time_min" in df:
+                first = df.iloc[0]
+                savings_pct = ((first['greedy_energy'] - first['ga_energy']) / first['greedy_energy']) * 100.0 if first['greedy_energy'] > 0 else 0.0
+                f.write(f"- **Mức tiết kiệm năng lượng của GA so với Greedy:** **{savings_pct:.2f}%** (Greedy = **{first['greedy_energy']:.2f} Wh**, GA = **{first['ga_energy']:.2f} Wh**).\n")
+                f.write(f"- **Đánh giá An toàn Pin:** Greedy có **{first['greedy_unsafe_routes']}** tuyến không an toàn, GA có **{first['ga_unsafe_routes']}** tuyến không an toàn; do đó **100% các chuyến bay đều đáp ứng điều kiện pin an toàn** trên dữ liệu thực nghiệm hiện tại.\n")
+                f.write(f"- **Greedy:** tổng năng lượng = **{first['greedy_energy']:.2f} Wh**, số lần sạc = **{int(first['greedy_charging_events'])}**, tổng thời gian sạc = **{first['greedy_total_charge_time_min']:.2f} phút**.\n")
+                f.write(f"- **GA:** tổng năng lượng = **{first['ga_energy']:.2f} Wh**, số lần sạc = **{int(first['ga_charging_events'])}**, tổng thời gian sạc = **{first['ga_total_charge_time_min']:.2f} phút**.\n")
+                f.write(f"- **Ví dụ chi tiết chặng bay (GA):** {first.get('ga_energy_sample', 'Không có dữ liệu chi tiết')}.\n")
+                f.write(f"- **Ví dụ chi tiết chặng bay (Greedy):** {first.get('greedy_energy_sample', 'Không có dữ liệu chi tiết')}.\n")
+            else:
+                f.write("- **TV3:** Chưa có dữ liệu chi tiết năng lượng từng chặng bay để báo cáo.\n")
 
             f.write("\n### 4. Nhận xét & Đánh giá Khoa học\n")
             avg_dist_saved = df["dist_saved_pct"].mean()

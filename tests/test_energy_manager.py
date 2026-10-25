@@ -65,6 +65,22 @@ class TestEnergyManager(unittest.TestCase):
         self.assertEqual(repaired_route[0], 0)
         self.assertEqual(repaired_route[-1], 0)
 
+    def test_depot_used_as_final_charge_stop_is_not_duplicated(self):
+        """Không lặp depot khi depot được chọn làm trạm sạc cho chặng cuối."""
+        manager = EnergyManager(battery_capacity=100.0, min_battery_threshold=0.20)
+        distances = self.distances.copy()
+        distances[1, 2] = 40.0
+        distances[2, 0] = 40.0
+        distances[1, 3] = 40.0
+        distances[3, 0] = 40.0
+        repaired_route, total_energy, is_feasible = manager.repair_route_with_charging(
+            [0, 1, 0], distances, self.nodes
+        )
+
+        self.assertEqual(repaired_route, [0, 1, 0])
+        self.assertAlmostEqual(total_energy, 96.0)
+        self.assertTrue(is_feasible)
+
     def test_rejects_invalid_battery_configuration(self):
         """Kiểm tra ném lỗi ValueError khi cấu hình pin không hợp lệ."""
         for cap, ratio in [(-100.0, 0.15), (0.0, 0.15), (100.0, -0.1), (100.0, 1.0), (100.0, 1.5)]:
@@ -78,6 +94,30 @@ class TestEnergyManager(unittest.TestCase):
         self.assertEqual(manager.get_charging_time(self.nodes[2]), 20.0)
         # Node không có service_time -> fallback về 12.0
         self.assertEqual(manager.get_charging_time({"id": 99}), 12.0)
+
+    def test_detailed_energy_breakdown_and_charging_time(self):
+        """Kiểm tra báo cáo chi tiết từng chặng bay và thời gian sạc tại trạm."""
+        manager = EnergyManager(battery_capacity=100.0, charging_rate=20.0)
+        route = [0, 1, 2, 0]
+        total_energy, is_valid, details = manager.calculate_route_energy_details(
+            route, self.distances, self.nodes, detailed=True
+        )
+
+        self.assertTrue(is_valid)
+        self.assertAlmostEqual(total_energy, 40.0 * (1.0 + 0.15 * 1.0) + 10.0 + 10.0, places=2)
+        self.assertEqual(len(details), 3)
+        self.assertAlmostEqual(details[0]["segment_energy"], 46.0, places=2)
+        self.assertAlmostEqual(details[0]["payload"], 1.0, places=2)
+        self.assertEqual(details[1]["node_type"], "charging")
+        self.assertAlmostEqual(details[1]["charging_time"], 20.0, places=2)
+        self.assertAlmostEqual(manager.estimate_charging_duration(54.0, self.nodes[2]), 20.0, places=2)
+
+        energy_only, is_feasible, no_details = manager.calculate_route_energy_details(
+            route, self.distances, self.nodes
+        )
+        self.assertEqual(energy_only, total_energy)
+        self.assertEqual(is_feasible, is_valid)
+        self.assertEqual(no_details, [])
 
 
 if __name__ == "__main__":

@@ -143,7 +143,7 @@ def main():
 
     # 1. Khởi tạo Pipeline tích hợp
     pipeline = UAVRoutingPipeline(
-        grid_size=(60, 60),
+        grid_size=(100, 100),
         num_drones=3,
         drone_capacity=5.0,
         drone_speed=10.0,

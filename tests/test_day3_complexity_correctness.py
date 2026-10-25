@@ -131,10 +131,11 @@ def test_2opt_monotonic_decrease():
 def test_energy_manager_termination_and_safety():
     print("\n[TEST 4] Kiểm chứng Định lý 4: Tính Dừng & Tính An toàn Pin (>= 15%):")
     nodes = {
-        0: {"id": 0, "pos": (0, 0), "type": "depot", "demand": 0.0, "tw": (0, 1000), "service_time": 0},
+        0: {"id": 0, "pos": (0, 0), "type": "depot", "demand": 0.0, "tw": (0, 1000), "service_time": 10},
         1: {"id": 1, "pos": (60, 0), "type": "delivery", "demand": 1.0, "tw": (10, 100), "service_time": 5},
         2: {"id": 2, "pos": (120, 0), "type": "delivery", "demand": 1.0, "tw": (20, 150), "service_time": 5},
-        3: {"id": 3, "pos": (60, 10), "type": "charging", "demand": 0.0, "tw": (0, 1000), "service_time": 15},
+        3: {"id": 3, "pos": (120, 120), "type": "delivery", "demand": 1.0, "tw": (20, 150), "service_time": 5},
+        4: {"id": 4, "pos": (60, 60), "type": "charging", "demand": 0.0, "tw": (0, 1000), "service_time": 15},
     }
     num_nodes = len(nodes)
     dist_mat = np.zeros((num_nodes, num_nodes))
@@ -143,15 +144,15 @@ def test_energy_manager_termination_and_safety():
             dist_mat[i, j] = math.dist(nodes[i]["pos"], nodes[j]["pos"])
 
     em = EnergyManager(battery_capacity=300.0, min_battery_threshold=0.15)
-    # Tuyến đường [0, 1, 2, 0] có tổng khoảng cách 60 + 60 + 120 = 240km, tiêu hao > 255Wh (vượt pin an toàn)
-    long_route = [0, 1, 2, 0]
+    # Tuyến đường [0, 1, 2, 3, 0] tiêu hao > 255Wh (vượt pin an toàn)
+    long_route = [0, 1, 2, 3, 0]
 
     repaired_route, is_feasible, energy_used = em.repair_route_with_charging(long_route, dist_mat, nodes)
 
     # 1. Thuật toán dừng và tìm được trạm sạc
     assert repaired_route is not None, "Thuật toán phải dừng và trả về tuyến đường"
     assert len(repaired_route) > len(long_route), "Phải chèn thêm trạm sạc vào tuyến"
-    assert 3 in repaired_route, "Trạm sạc 3 phải xuất hiện trong tuyến đường"
+    assert 4 in repaired_route, "Trạm sạc 4 phải xuất hiện trong tuyến đường"
 
     # 2. Kiểm tra an toàn pin
     total_energy, feasible_energy = em.calculate_route_energy(repaired_route, dist_mat, nodes)

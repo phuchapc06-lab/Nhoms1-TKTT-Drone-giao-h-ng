@@ -57,6 +57,92 @@ class EnergyManager:
         rate = self.base_consumption + self.payload_factor * max(0.0, cargo_weight)
         return distance * rate
 
+    def estimate_charging_duration(
+        self,
+        battery_level: float,
+        node: Optional[Dict[str, Any]] = None,
+        target_battery: Optional[float] = None
+    ) -> float:
+        """
+        Ước tính thời gian sạc cần thiết để nạp pin tới mức mục tiêu, phục vụ báo cáo thực nghiệm.
+        Trả về thời gian tính bằng phút.
+        """
+        if target_battery is None:
+            target_battery = self.battery_capacity
+
+        needed_energy = max(0.0, target_battery - max(0.0, battery_level))
+        charge_minutes = needed_energy / max(self.charging_rate, 1e-9)
+        station_time = self.get_charging_time(node) if node is not None else self.charging_time
+        return max(charge_minutes, station_time)
+
+    def calculate_route_energy_details(
+        self,
+        route: List[int],
+        dist_matrix: Any,
+        nodes: Dict[int, Dict[str, Any]],
+        detailed: bool = False
+    ) -> Tuple[float, bool, List[Dict[str, Any]]]:
+        """
+        Tính tổng năng lượng tiêu thụ; chỉ trả chi tiết từng chặng khi detailed=True.
+        Mỗi phần tử trong danh sách chứa: from, to, distance, cargo, segment_energy,
+        battery_before, battery_after_segment, charging_time, battery_after_charge.
+        """
+        if not route or len(route) <= 2:
+            return 0.0, True, []
+
+        current_cargo = 0.0
+        for nid in route:
+            node = nodes.get(nid, {})
+            if node.get("type") == "delivery":
+                current_cargo += node.get("demand", 0.0)
+
+        current_battery = self.battery_capacity
+        total_energy = 0.0
+        is_feasible = True
+        details: List[Dict[str, Any]] = []
+
+        for i in range(len(route) - 1):
+            u = route[i]
+            v = route[i + 1]
+            dist = dist_matrix[u][v] if isinstance(dist_matrix, list) else dist_matrix[u, v]
+            if math.isinf(dist):
+                return float("inf"), False, details
+
+            segment_payload = current_cargo
+            seg_energy = self.calculate_segment_energy(dist, segment_payload)
+            battery_before = current_battery
+            battery_after_segment = current_battery - seg_energy
+            total_energy += seg_energy
+            current_battery = battery_after_segment
+
+            charge_time = 0.0
+            node_v = nodes.get(v, {})
+            if node_v.get("type") == "delivery":
+                current_cargo -= node_v.get("demand", 0.0)
+            elif node_v.get("type") in ["charging", "depot"]:
+                charge_time = self.estimate_charging_duration(current_battery, node_v)
+                current_battery = self.battery_capacity
+
+            if battery_after_segment < 0:
+                is_feasible = False
+
+            if detailed:
+                details.append({
+                    "from": u,
+                    "to": v,
+                    "distance": dist,
+                    "payload": segment_payload,
+                    "segment_energy": seg_energy,
+                    "battery_before": battery_before,
+                    "battery_after_segment": battery_after_segment,
+                    "charging_time": charge_time,
+                    "battery_after_charge": current_battery,
+                    "node_type": node_v.get("type"),
+                    "node_id": v,
+                })
+
+        return total_energy, is_feasible, details
+
     def calculate_route_energy(
         self,
         route: List[int],
@@ -68,44 +154,7 @@ class EnergyManager:
         Chữ ký hàm tuân thủ 100% yêu cầu của FitnessCalculator:
         Trả về: (total_energy, is_feasible)
         """
-        if not route or len(route) <= 2:
-            return 0.0, True
-
-        # Tính tải trọng ban đầu của chuyến bay
-        current_cargo = 0.0
-        for nid in route:
-            node = nodes.get(nid, {})
-            if node.get("type") == "delivery":
-                current_cargo += node.get("demand", 0.0)
-
-        current_battery = self.battery_capacity
-        total_energy = 0.0
-        is_feasible = True
-
-        for i in range(len(route) - 1):
-            u = route[i]
-            v = route[i + 1]
-
-            dist = dist_matrix[u][v] if isinstance(dist_matrix, list) else dist_matrix[u, v]
-            if math.isinf(dist):
-                return float("inf"), False
-
-            seg_energy = self.calculate_segment_energy(dist, current_cargo)
-            total_energy += seg_energy
-            current_battery -= seg_energy
-
-            # Nếu pin bị cạn kiệt dưới 0
-            if current_battery < 0:
-                is_feasible = False
-
-            # Giảm tải trọng sau khi giao hàng xong tại v
-            node_v = nodes.get(v, {})
-            if node_v.get("type") == "delivery":
-                current_cargo -= node_v.get("demand", 0.0)
-            elif node_v.get("type") in ["charging", "depot"]:
-                # Nạp đầy pin tại trạm sạc hoặc trạm gốc
-                current_battery = self.battery_capacity
-
+        total_energy, is_feasible, _ = self.calculate_route_energy_details(route, dist_matrix, nodes)
         return total_energy, is_feasible
 
     def repair_route_with_charging(
@@ -122,11 +171,11 @@ class EnergyManager:
         if not route or len(route) <= 2:
             return route[:], 0.0, True
 
-        charging_stations = [k for k, v in nodes.items() if v.get("type") == "charging"]
-        if not charging_stations:
-            # Không có trạm sạc trên bản đồ -> giữ nguyên và kiểm tra khả thi
-            tot_e, feas = self.calculate_route_energy(route, dist_matrix, nodes)
-            return route[:], tot_e, feas
+        charging_stations = [0] # Coi depot (chỉ số 0) là một trạm sạc
+        for node_id in range(len(nodes) - 1, 0, -1): # Các trạm sạc luôn ở cuối list. Vì thế, tìm kiếm ngược đến node đầu tiên không phải thuộc dạng charging
+            if nodes.get(node_id, {}).get("type") != "charging":
+                break
+            charging_stations.append(node_id)
 
         current_cargo = sum(nodes.get(nid, {}).get("demand", 0.0) for nid in route if nodes.get(nid, {}).get("type") == "delivery")
         current_battery = self.battery_capacity
@@ -169,16 +218,16 @@ class EnergyManager:
                             best_detour = detour
                             best_cs = cs
 
-                # Đang đứng ở trạm sạc (pin vừa nạp đầy) mà vẫn không đủ pin bay tới v -> chèn thêm trạm nào
-                # cũng vô ích. Trước đây best_cs chính là u (đường vòng = 0) nên bị chèn lại mãi -> vòng lặp vô hạn.
+                # Không được chèn lại trạm sạc hiện tại.
                 if best_cs is not None and best_cs != u:
-                    # Chèn trạm sạc vào lộ trình
                     dist_to_cs = dist_matrix[u][best_cs] if isinstance(dist_matrix, list) else dist_matrix[u, best_cs]
                     e_to_cs = self.calculate_segment_energy(dist_to_cs, current_cargo)
                     current_battery = self.battery_capacity # Nạp đầy pin tại trạm
                     total_energy += e_to_cs
                     repaired_route.append(best_cs)
-                    # Sau khi sạc tại best_cs, tiếp tục xét bay từ best_cs đến v
+                    if best_cs == v:
+                        idx += 1
+                    # Nếu chưa tới v, tiếp tục xét chặng từ trạm sạc đó.
                 else:
                     # Không trạm sạc nào khả thi -> đành bay tiếp và đánh dấu không khả thi
                     current_battery -= seg_energy
