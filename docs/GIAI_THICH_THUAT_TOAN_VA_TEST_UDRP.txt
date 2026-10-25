@@ -1,0 +1,399 @@
+====================================================================================================
+               TÀI LIỆU GIẢI THÍCH TOÀN DIỆN MÃ NGUỒN, THUẬT TOÁN, CÁC TRƯỜNG HỢP VÀ BỘ KIỂM THỬ
+                 ĐỀ TÀI: TỐI ƯU HÓA ĐỊNH TUYẾN ĐỘI BAY UAV GIAO HÀNG ĐÔ THỊ THÔNG MINH (UDRP)
+====================================================================================================
+Sinh viên thực hiện: Nguyễn Phúc Hà (Thành viên 5 - Tech Lead & System Integrator)
+Khoa học: Phân tích & Thiết kế Thuật toán (Advanced Algorithms & Optimization)
+Trường: Đại học Kinh tế Quốc dân (NEU)
+Thời gian cập nhật: 2026-10-15
+====================================================================================================
+
+MỤC LỤC CHI TIẾT:
+  PHẦN 1: GIẢI THÍCH CẶN KẼ TỪNG THUẬT TOÁN TRONG HỆ THỐNG
+    1.1. Thuật toán A* né chướng ngại vật & Ma trận khoảng cách (TV2)
+    1.2. Giải thuật Di truyền (Genetic Algorithm - GA Core) (TV1)
+    1.3. Hàm mục tiêu đa ràng buộc & Điểm thích nghi (Fitness Function) (TV5)
+    1.4. Thuật toán Tối ưu cục bộ 2-Opt gỡ giao cắt đường bay (TV6)
+    1.5. Mô hình Quản lý Năng lượng Pin & Tự động chèn trạm sạc (Energy Manager) (TV3)
+    1.6. Thuật toán Tham lam Đối chuẩn (Greedy Nearest Neighbor Router) (TV6)
+    1.7. Khung điều phối toàn trình Tích hợp Hệ thống (UAVRoutingPipeline) (TV5)
+
+  PHẦN 2: CÁC TRƯỜNG HỢP BIÊN, NGOẠI LỆ VÀ KỊCH BẢN THỰC TẾ
+    2.1. Điểm giao hàng hoặc trạm nằm sát / bên trong Vùng cấm bay (NFZ)
+    2.2. Tuyến bay quá dài vượt ngưỡng an toàn dung lượng Pin (Battery Exhaustion)
+    2.3. Khung giờ giao hàng: Khách nhận sớm (Early arrival) vs Trễ hạn (Late penalty)
+    2.4. Quá tải trọng Drone (Overcapacity penalty)
+    2.5. Các trường hợp vi phạm hợp đồng dữ liệu (Data Contract Violations)
+
+  PHẦN 3: GIẢI THÍCH CHI TIẾT CÁC BÀI KIỂM THỬ TỰ ĐỘNG (UNIT & INTEGRATION TESTS)
+    3.1. test_distance_matrix.py (Kiểm thử A* & Cache TV2)
+    3.2. test_ga.py (Kiểm thử GA Core TV1)
+    3.3. test_member5.py (Kiểm thử Fitness & Visualizer TV5)
+    3.4. test_day2_pipeline.py (Kiểm thử Pipeline & Validator TV5)
+    3.5. test_day3_evaluator.py (Kiểm thử Evaluator & Benchmark TV5)
+    3.6. test_day4_integration.py (Kiểm thử Cột mốc Tích hợp Toàn diện Ngày 4)
+
+  PHẦN 4: SO SÁNH KHOA HỌC GIỮA CÁC THUẬT TOÁN (BENCHMARK & SCALABILITY)
+    4.1. Bảng số liệu đối sánh trực tiếp (A* + GA + 2-Opt vs A* + Greedy Baseline)
+    4.2. So sánh độ phức tạp tính toán (Computational Complexity - Big O)
+    4.3. Phân tích ưu và nhược điểm của từng phương pháp
+    4.4. Đánh giá khả năng mở rộng quy mô (Scalability: N = 10, 50, 100 điểm)
+
+
+====================================================================================================
+PHẦN 1: GIẢI THÍCH CẶN KẼ TỪNG THUẬT TOÁN TRONG HỆ THỐNG
+====================================================================================================
+
+1.1. THUẬT TOÁN A* TỐI ƯU HÓA NÉ CHƯỚNG NGẠI VẬT (A* ALGORITHM)
+----------------------------------------------------------------------------------------------------
+- Vị trí mã nguồn: `src/models/optimized_astar.py` và `src/utils/distance_matrix.py`
+- Phụ trách: Thành viên 2 (lynseyngoc)
+- Mục đích: Tìm đường đi ngắn nhất giữa hai tọa độ bất kỳ trên không gian lưới 2D đô thị, lượn vòng 
+  qua các Vùng cấm bay (No-Fly Zones - NFZs).
+
+* Nguyên lý hoạt động:
+  1. Xây dựng bản đồ lưới nhị phân `build_grid(width, height, no_fly_zones)`: 
+     Ô nào bị vùng cấm bay bao phủ sẽ có giá trị True (bị khóa, cấm vào).
+  2. Tối ưu tầm nhìn thẳng (Bresenham Line-of-sight - LOS):
+     Trước khi chạy thuật toán A* tốn kém, hệ thống dùng thuật toán vẽ đường thẳng Bresenham nối 2 điểm.
+     Nếu đoạn thẳng này không cắt bất kỳ ô cấm bay nào, thuật toán trả về ngay khoảng cách Euclidean:
+     d = sqrt((x2 - x1)^2 + (y2 - y1)^2) mà không cần tính toán A* (tiết kiệm hơn 70% thời gian).
+  3. Tìm kiếm A* với không gian 8 hướng (8-connected grid):
+     Drone có thể bay thẳng (chi phí 1.0) hoặc bay chéo góc 45 độ (chi phí sqrt(2) ~ 1.414).
+  4. Hàm Heuristic Octile Distance:
+     h(n) = D * (dx + dy) + (D2 - 2*D) * min(dx, dy)
+     Trong đó: D = 1.0 (chi phí bước thẳng), D2 = 1.414 (chi phí bước chéo).
+     Đây là hàm Heuristic nhất quán (admissible & consistent), đảm bảo A* tìm được lời giải tối ưu tuyệt đối.
+  5. Cơ chế làm mượt đường bay (Path Smoothing):
+     Loại bỏ các nút zigzag thừa trên đường bay, tạo quỹ đạo bay thẳng mượt mà cho Drone.
+  6. Bộ nhớ đệm thông minh (MD5 Hash Cache):
+     Tạo mã băm MD5 dựa trên tọa độ toàn bộ điểm và vùng cấm bay. Ma trận khoảng cách được lưu ra 
+     file `data/processed/distance_matrix.pkl`. Nếu dữ liệu không đổi, ma trận nạp tức thì trong 0.001s.
+
+
+1.2. GIẢI THUẬT DI TRUYỀN (GENETIC ALGORITHM - GA CORE)
+----------------------------------------------------------------------------------------------------
+- Vị trí mã nguồn: `src/algorithms/genetic_algorithm.py`
+- Phụ trách: Thành viên 1 (Sieqhart262)
+- Mục đích: Giải quyết bài toán phân chia khách hàng cho K Drone và sắp xếp thứ tự giao hàng tối ưu.
+
+* Cấu trúc Mã hóa Nhiễm sắc thể (Chromosome Representation):
+  Sử dụng mã hóa dạng hoán vị mở rộng với dấu phân tách âm để biểu diễn nhiều Drone trên 1 chuỗi:
+  Ví dụ có 7 khách hàng (1 đến 7) và 3 Drone (cần 2 điểm ngăn cách là -1 và -2):
+  Chromosome = [3, 1, -1, 4, 7, 2, -2, 5, 6]
+  Khi giải mã (Decode):
+    - Tuyến Drone 1: 0 -> 3 -> 1 -> 0
+    - Tuyến Drone 2: 0 -> 4 -> 7 -> 2 -> 0
+    - Tuyến Drone 3: 0 -> 5 -> 6 -> 0
+  (Số 0 là Trạm gốc Depot được tự động chèn vào đầu và cuối mỗi tuyến).
+
+* Các toán tử tiến hóa cốt lõi:
+  1. Khởi tạo quần thể ngẫu nhiên (Population Initialization):
+     Sinh ngẫu nhiên N_pop cá thể, mỗi cá thể là một hoán vị hợp lệ của tập {1..N} và {-1..-(K-1)}.
+  2. Chọn lọc cạnh tranh (Tournament Selection, k = 3):
+     Lấy ngẫu nhiên 3 cá thể trong quần thể, cá thể nào có điểm thích nghi (Fitness) cao nhất sẽ 
+     được chọn làm cha mẹ để sinh sản. Giúp duy trì áp lực chọn lọc mà không bị mất tính đa dạng.
+  3. Lai ghép bảo toàn thứ tự (Order Crossover - OX):
+     Chọn một đoạn gen ngẫu nhiên từ Cha, sao chép nguyên vẹn sang Con. Các gen còn lại được điền 
+     theo đúng thứ tự xuất hiện ở Mẹ. Cơ chế này đảm bảo 100% không bao giờ sinh ra khách hàng trùng lặp 
+     hoặc bỏ sót khách hàng.
+  4. Đột biến hoán đổi (Swap Mutation, xác suất p_m = 0.15):
+     Chọn ngẫu nhiên 2 vị trí bất kỳ trên nhiễm sắc thể và đổi chỗ cho nhau để khám phá không gian mới.
+  5. Bảo lưu cá thể ưu tú (Elitism, rate = 0.05):
+     Cá thể tốt nhất của thế hệ hiện tại luôn được giữ lại nguyên vẹn sang thế hệ sau, đảm bảo chất lượng 
+     lời giải không bao giờ bị thụt lùi qua các vòng lặp.
+
+
+1.3. HÀM MỤC TIÊU ĐA RÀNG BUỘC & ĐIỂM THÍCH NGHI (FITNESS CALCULATOR)
+----------------------------------------------------------------------------------------------------
+- Vị trí mã nguồn: `src/algorithms/fitness.py`
+- Phụ trách: Thành viên 5 (Nguyễn Phúc Hà)
+- Mục đích: Chuyển đổi bài toán tối ưu đa mục tiêu có ràng buộc thực tế thành một hàm số duy nhất.
+
+* Công thức Chi phí Tổng hợp (Total Route Cost):
+  Cost = alpha * Distance + beta * Energy + gamma * TW_Penalty + delta * Cap_Penalty
+
+  Trong đó các trọng số thiết lập:
+  - alpha = 1.0   : Trọng số chi phí quãng đường di chuyển (km).
+  - beta = 1.5    : Trọng số chi phí điện năng tiêu thụ (Wh).
+  - gamma = 5.0   : Hệ số phạt nếu giao hàng trễ so với Khung giờ (Time Window lateness).
+  - delta = 1000.0: Hệ số phạt nặng vi phạm ràng buộc cứng (quá tải Drone, cạn pin giữa đường).
+
+* Công thức Điểm Thích nghi nghịch đảo (Fitness Score):
+  Fitness = 1000.0 / (Total Cost + 1.0)
+  Ý nghĩa toán học: 
+  - Chi phí Total Cost càng nhỏ (tuyến đường càng ngắn, tiết kiệm pin, đúng giờ) thì điểm Fitness càng cao.
+  - Cộng thêm 1.0 ở mẫu số để triệt tiêu lỗi chia cho 0 khi Total Cost = 0.
+
+
+1.4. THUẬT TOÁN TỐI ƯU CỤC BỘ 2-OPT (2-OPT LOCAL SEARCH)
+----------------------------------------------------------------------------------------------------
+- Vị trí mã nguồn: `src/algorithms/local_search.py`
+- Phụ trách: Thành viên 6 (Baseline & Local Search) - Tích hợp bởi TV5
+- Mục đích: Khử các đường bay chéo nhau, gỡ các vòng xoắn hình số 8 trên lộ trình của từng Drone.
+
+* Nguyên lý hoạt động:
+  Xét một tuyến đường: Depot -> v1 -> ... -> vi -> vi+1 -> ... -> vj -> vj+1 -> ... -> Depot.
+  Nếu hai cạnh (vi, vi+1) và (vj, vj+1) cắt chéo nhau trong không gian:
+  1. Cắt đứt 2 cạnh hiện tại: Tổng độ dài ban đầu = d(vi, vi+1) + d(vj, vj+1).
+  2. Nối chéo lại thành 2 cạnh mới: (vi, vj) và (vi+1, vj+1).
+  3. Đảo ngược toàn bộ thứ tự các điểm nằm giữa từ vi+1 đến vj.
+  4. Nếu độ dài mới: d(vi, vj) + d(vi+1, vj+1) < độ dài ban đầu:
+     Cập nhật ngay tuyến bay mới. Lặp lại cho đến khi không còn cặp cạnh nào cải thiện được nữa.
+* Hiệu quả: Rút ngắn tức thì từ 5% đến 17% độ dài tuyến đường sau khi GA hoặc Greedy vừa sinh ra.
+
+
+1.5. MÔ HÌNH QUẢN LÝ PIN & TỰ ĐỘNG CHÈN TRẠM SẠC (ENERGY MANAGER)
+----------------------------------------------------------------------------------------------------
+- Vị trí mã nguồn: `src/algorithms/energy_manager.py`
+- Phụ trách: Thành viên 3 (Energy & Constraints) - Tích hợp bởi TV5
+- Mục đích: Kiểm soát tiêu hao pin theo tải trọng thực tế và sửa lỗi tuyến đường nếu Drone bị cạn pin.
+
+* Mô hình tiêu hao năng lượng phi tuyến theo tải trọng (Payload-dependent consumption):
+  E_chặng = Khoảng cách * (c_base + payload_factor * Khối lượng hàng)
+  Trong đó:
+  - c_base = 1.0 Wh/km (tiêu hao cơ sở khi bay không tải).
+  - payload_factor = 0.15 Wh/km/kg (càng chở nặng, động cơ quay càng nhanh, tiêu hao pin càng lớn).
+  - Sau khi giao hàng tại mỗi điểm, khối lượng hàng giảm dần, năng lượng tiêu hao chặng sau sẽ ít hơn.
+
+* Thuật toán Tham lam Tự động Sửa tuyến bằng Trạm sạc (repair_route_with_charging):
+  1. Drone xuất phát với 100% dung lượng pin (300 Wh).
+  2. Ngưỡng pin an toàn tối thiểu (min_safe_battery) = 15% dung lượng (45 Wh).
+  3. Tại mỗi nút u chuẩn bị bay sang nút v:
+     - Tính điện năng tiêu hao chặng u -> v.
+     - Nếu Pin_hiện_tại - E(u, v) >= 15%: Đủ an toàn -> Bay thẳng đến v.
+     - Nếu Pin_hiện_tại - E(u, v) < 15%: Có nguy cơ rơi rớt -> Kích hoạt cơ chế chèn trạm sạc!
+     - Tìm trong danh sách các Trạm sạc (Charging Stations) trạm 'cs' thỏa mãn:
+       + Pin hiện tại đủ bay từ u đến cs.
+       + Độ lệch đường bay detour = d(u, cs) + d(cs, v) - d(u, v) là nhỏ nhất.
+     - Chèn điểm 'cs' vào lộ trình, Drone được sạc đầy 100% pin tại trạm và bay tiếp đến v.
+
+
+1.6. THUẬT TOÁN THAM LAM ĐỐI CHUẨN (GREEDY NEAREST NEIGHBOR ROUTER)
+----------------------------------------------------------------------------------------------------
+- Vị trí mã nguồn: `src/algorithms/baseline_greedy.py`
+- Phụ trách: Thành viên 6 (Baseline) - Tích hợp bởi TV5
+- Mục đích: Cung cấp lời giải cơ sở nhanh chóng để làm thước đo khoa học đánh giá mức độ ưu việt của GA.
+
+* Nguyên lý hoạt động:
+  1. Ban đầu, tất cả K Drone đều ở Trạm gốc (Depot 0), tải trọng hiện tại = 0 kg.
+  2. Tập khách hàng chưa giao: unvisited = {1, 2, ..., N}.
+  3. Trong khi còn khách hàng chưa giao:
+     - Duyệt qua tất cả Drone và tất cả khách hàng unvisited.
+     - Tìm cặp (Drone d, Khách hàng c) có khoảng cách từ vị trí hiện tại của Drone d đến c là ngắn nhất,
+       đồng thời tổng tải trọng của Drone d + demand(c) <= Tải trọng tối đa (5.0 kg).
+     - Bổ sung khách c vào lộ trình Drone d, cập nhật tải trọng và xóa c khỏi unvisited.
+  4. Nếu tất cả Drone đều đầy tải mà vẫn còn khách: Phân bổ khách hàng nhẹ nhất vào Drone có tải ít nhất.
+  5. Cuối cùng, cho tất cả các Drone quay về Trạm gốc Depot 0.
+
+
+1.7. KHUNG ĐIỀU PHỐI TOÀN TRÌNH TÍCH HỢP HỆ THỐNG (UAVROUTINGPIPELINE)
+----------------------------------------------------------------------------------------------------
+- Vị trí mã nguồn: `src/pipeline.py` và `src/main.py`
+- Phụ trách: Thành viên 5 (Nguyễn Phúc Hà - Tech Lead & System Integrator)
+- Mục đích: Kết nối tuần hoàn khép kín toàn bộ module của 6 thành viên thành một chỉnh thể hoàn chỉnh:
+  Bước 1: Nạp file JSON chuẩn hóa thông qua `DataContractValidator`.
+  Bước 2: Kích hoạt `distance_matrix` (TV2) tính toán ma trận khoảng cách né vùng cấm bay.
+  Bước 3: Chạy giải thuật định tuyến chính (GA Core của TV1 hoặc Greedy của TV6).
+  Bước 4: Áp dụng thuật toán 2-Opt (TV6) để duỗi thẳng và gỡ các nút thắt giao cắt đường bay.
+  Bước 5: Áp dụng `EnergyManager` (TV3) để kiểm định pin và tự động bổ sung trạm sạc nếu thiếu pin.
+  Bước 6: Đánh giá toàn diện bằng `FitnessCalculator` (TV5) tính toán chi phí và vi phạm.
+  Bước 7: Nghiệm thu tính hợp lệ qua `DataContractValidator` (TV5).
+  Bước 8: Xuất trực quan hóa bản đồ đa UAV nhiều màu và đồ thị hội tụ bằng `UAVVisualizer` (TV5).
+
+
+====================================================================================================
+PHẦN 2: CÁC TRƯỜNG HỢP BIÊN, NGOẠI LỆ VÀ KỊCH BẢN THỰC TẾ
+====================================================================================================
+
+2.1. ĐIỂM GIAO HÀNG / TRẠM NẰM SÁT HOẶC TRONG VÙNG CẤM BAY (NFZ)
+- Tình huống: Trong kịch bản ngẫu nhiên, một tọa độ khách hàng hoặc trạm sạc vô tình rơi vào vùng 
+  cấm bay hoặc bị tường cấm bay chặn kín hoàn toàn.
+- Xử lý của hệ thống:
+  + Module A* (TV2) sẽ phát hiện không tìm thấy đường đi và gán khoảng cách = vô cùng (infinity).
+  + Khung Pipeline (TV5) bắt ngoại lệ này và tự động gán chi phí thay thế = 2.0 * Khoảng cách Euclidean 
+    làm mức phạt nặng, tránh việc giải thuật GA hay Greedy bị sập (crash) do giá trị không xác định.
+
+2.2. TUYẾN BAY QUÁ DÀI DẪN TỚI NGUY CƠ CẠN PIN (BATTERY DEPLETION)
+- Tình huống: Khách hàng ở quá xa trạm gốc, một chuyến bay khứ hồi vượt quá dung lượng 300 Wh của pin.
+- Xử lý của hệ thống:
+  + Thuật toán `repair_route_with_charging` tự động quét bán kính xung quanh.
+  + Nếu tìm thấy trạm sạc nằm trong phạm vi bay an toàn, trạm sạc sẽ được tự động chèn vào giữa lộ trình,
+    cho phép UAV sạc đầy pin và tiếp tục phục vụ khách hàng thành công.
+  + Nếu không có bất kỳ trạm sạc nào khả dĩ, tuyến đường được đánh dấu Infeasible và kích hoạt 
+    hệ số phạt nặng delta = 1000.0 trong hàm Fitness.
+
+2.3. RÀNG BUỘC KHUNG GIỜ GIAO HÀNG (TIME WINDOWS)
+- Tình huống 1 (Đến sớm: current_time < start_tw): Khách hàng chưa có nhà hoặc điểm nhận chưa mở cửa.
+  -> Xử lý: UAV phải lơ lửng chờ đợi (hoặc đỗ an toàn) đến start_tw. Thời gian chờ được cộng vào tổng thời gian.
+- Tình huống 2 (Đến muộn: current_time > end_tw): Khách hàng bị trễ hẹn.
+  -> Xử lý: Tính số phút trễ hạn lateness = current_time - end_tw. Kích hoạt mức phạt vi phạm: 
+     TW_Penalty = lateness * gamma (gamma = 5.0). GA sẽ tự động loại bỏ các cá thể bị trễ hẹn qua các thế hệ.
+
+2.4. QUÁ TẢI TRỌNG DRONE (OVERCAPACITY)
+- Tình huống: Tổng nhu cầu hàng hóa của các khách hàng trên một tuyến lớn hơn sức chở của Drone (5.0 kg).
+- Xử lý: Kích hoạt hình phạt quá tải: Cap_Penalty = (Tổng_tải_trọng - 5.0) * delta (delta = 1000.0).
+  Khoản phạt này khiến điểm Fitness của cá thể giảm mạnh xuống xấp xỉ 0, khiến nó bị đào thải ngay trong 
+  vòng chọn lọc tự nhiên của GA.
+
+2.5. CÁC LỖI VI PHẠM HỢP ĐỒNG DỮ LIỆU (DATA CONTRACT VIOLATIONS)
+Hệ thống `DataContractValidator` kiểm tra nghiêm ngặt 5 tiêu chuẩn vàng:
+  1. Bắt buộc phải có Trạm gốc Depot ID = 0.
+  2. Mỗi tuyến bay bắt buộc phải bắt đầu tại 0 và kết thúc tại 0.
+  3. Tất cả các điểm giao hàng (delivery) phải được viếng thăm đúng 1 lần duy nhất (không được bỏ sót).
+  4. Không được có điểm giao hàng nào bị giao trùng lặp trên 2 tuyến khác nhau.
+  5. Cho phép sai số dấu phẩy động 0.01 kg để xử lý sai số làm tròn chuẩn IEEE 754 của máy tính.
+
+
+====================================================================================================
+PHẦN 3: GIẢI THÍCH CHI TIẾT CÁC BÀI KIỂM THỬ TỰ ĐỘNG (UNIT & INTEGRATION TESTS)
+====================================================================================================
+
+Dự án sở hữu 6 bộ test tự động độc lập, đạt tỷ lệ 100% Passed:
+
+3.1. `tests/test_distance_matrix.py` (Kiểm thử Module A* & Cache của TV2)
+- Test 1 (`test_straight_line_without_obstacle`): Kiểm tra 2 điểm thông thoáng không có NFZ chắn ngang. 
+  Đảm bảo thuật toán kích hoạt Line-of-sight và trả về chính xác khoảng cách đường thẳng Euclidean.
+- Test 2 (`test_detour_around_nfz_is_longer`): Đặt 1 vùng cấm bay ở giữa 2 điểm. Kiểm tra khoảng cách 
+  sau khi né vật cản bắt buộc phải dài hơn đường thẳng nối trực tiếp.
+- Test 3 (`test_boundary_is_inclusive`): Kiểm tra tính chất bao đóng của tọa độ góc vùng cấm bay.
+- Test 4 (`test_unreachable_returns_inf`): Kiểm tra khi một điểm bị bao bọc kín bởi tường cấm bay, 
+  A* phải trả về float('inf') chứ không được rơi vào vòng lặp vô tận (infinite loop).
+- Test 5 (`test_matrix_properties`): Kiểm tra ma trận M x M đối xứng qua đường chéo chính và 
+  các phần tử trên đường chéo chính d(i, i) bắt buộc phải bằng 0.
+- Test 6 (`test_cache_is_reused`): Kiểm tra cơ chế MD5 Cache: Lần gọi thứ 2 phải đọc từ file `.pkl` 
+  với thời gian thực thi xấp xỉ 0 giây.
+
+3.2. `tests/test_ga.py` (Kiểm thử Lõi Giải thuật Di truyền GA Core của TV1)
+- Test 1 (Khởi tạo & Validate tham số): Kiểm tra khởi tạo GA với số cá thể, số thế hệ, tỷ lệ lai ghép.
+- Test 2 (Decode chromosome): Kiểm tra giải mã chuỗi gen có dấu phân tách âm sang danh sách các tuyến.
+- Test 3 (Sinh quần thể ngẫu nhiên): Kiểm tra tính hợp lệ của từng cá thể và khả năng tái lập bằng seed.
+- Test 4 (Đánh giá Fitness): Kiểm tra cá thể bị quá tải bị phạt nặng, cá thể hợp lệ có fitness chuẩn xác.
+- Test 5 (Tournament Selection): Kiểm tra cá thể được chọn qua đấu loại có Fitness trung bình cao hơn 
+  Fitness trung bình của toàn quần thể.
+- Test 6 (Lai ghép OX): Kiểm tra con sinh ra không bao giờ bị mất điểm giao hàng hay trùng lặp.
+- Test 7 (Đột biến Swap): Kiểm tra hoán đổi vị trí 2 gen.
+- Test 8 (Vòng lặp tiến hóa evolve 300 thế hệ): Kiểm tra đường cong chi phí giảm mạnh (giảm > 80% chi phí 
+  so với thế hệ ban đầu) và tích hợp xuất ảnh hội tụ thành công.
+
+3.3. `tests/test_member5.py` (Kiểm thử Module Fitness & Visualizer của TV5)
+- Test 1 (FitnessCalculator độc lập): Kiểm tra tính toán chi phí thành phần: khoảng cách, năng lượng, 
+  phạt trễ hẹn và phạt tải trọng trên một tuyến mẫu cụ thể.
+- Test 2 (UAVVisualizer độc lập): Kiểm tra các hàm vẽ `plot_multi_uav_routes` và `plot_convergence_curve` 
+  xuất file ảnh ra đĩa mà không bị lỗi bộ nhớ hay lỗi font tiếng Việt.
+
+3.4. `tests/test_day2_pipeline.py` (Kiểm thử Pipeline Tích hợp E2E & Validator Ngày 2 của TV5)
+- Test 1 (DataContractValidator): Kiểm tra bắt chính xác các lỗi: thiếu Depot 0, dữ liệu rỗng, 
+  trùng điểm giao hàng, bỏ sót khách hàng, hoặc vượt tải trọng.
+- Test 2 (Pipeline End-to-End): Sinh dữ liệu mô phỏng chuẩn (6 giao hàng, 2 trạm sạc, 3 NFZs), 
+  tính ma trận khoảng cách, chạy Greedy, chạy GA, và xuất ảnh kết quả ra thư mục `docs/figures/`.
+
+3.5. `tests/test_day3_evaluator.py` (Kiểm thử Bộ Đo đạc Thực nghiệm & Báo cáo Ngày 3 của TV5)
+- Test 1 (BenchmarkGenerator): Sinh tự động bộ dữ liệu chuẩn 10 điểm và kiểm tra Data Contract.
+- Test 2 (BenchmarkEvaluator Suite đa quy mô): Chạy kiểm thử tự động trên 2 quy mô N = 6 và N = 12. 
+  Kiểm tra tính toán các chỉ số khoa học: % quãng đường tiết kiệm, % năng lượng tiết kiệm.
+- Test 3 (Xuất tài liệu khoa học): Kiểm tra sự tồn tại và dung lượng của 4 file đầu ra: 
+  `docs/EXPERIMENT_RESULTS.md`, `benchmark_comparison_results.csv`, `comparison_bars.png`, `scalability_analysis.png`.
+
+3.6. `tests/test_day4_integration.py` (Kiểm thử Cột mốc Tích hợp Toàn diện Ngày 4)
+- Test 1 (EnergyManager): Kiểm tra tính tiêu hao chặng đơn; kiểm tra phát hiện tuyến đường vượt dung lượng 
+  pin (160km > 100Wh); kiểm tra hàm `repair_route_with_charging` tự động chèn trạm sạc số 3 vào tuyến đường.
+- Test 2 (2-Opt Local Search): Tạo 4 điểm hình vuông bị cắt chéo hình số 8 (khoảng cách 48.28 km). 
+  Chạy `two_opt_route`, kiểm tra quãng đường rút ngắn chính xác về 40.00 km (tiết kiệm 17.2%).
+- Test 3 (Baseline Greedy Router): Kiểm tra `GreedyRouter.solve()` sinh ra lời giải hoàn toàn hợp lệ 
+  với Data Contract trên 2 Drone.
+- Test 4 (Tích hợp khép kín trên benchmark_10.json): Nạp dữ liệu thực tế 10 điểm giao hàng, chạy A*, 
+  chạy Greedy kèm 2-Opt & Pin, chạy GA kèm 2-Opt & Pin, nghiệm thu file ảnh `route_ga.png`.
+
+
+====================================================================================================
+PHẦN 4: SO SÁNH KHOA HỌC GIỮA CÁC THUẬT TOÁN (BENCHMARK & SCALABILITY)
+====================================================================================================
+
+4.1. BẢNG SỐ LIỆU ĐỐI SÁNH TRỰC TIẾP (THỰC NGHIỆM TRÊN TẬP BENCHMARK 10 ĐIỂM)
+----------------------------------------------------------------------------------------------------
+Chỉ số đánh giá                 | A* + Greedy Baseline | A* + GA (Đề xuất)  | Mức độ Cải thiện
+--------------------------------|----------------------|--------------------|-----------------------
+Tổng quãng đường bay (km)       | 262.09 km            | 247.48 km          | Rút ngắn 5.6%
+Tổng năng lượng tiêu hao (Wh)   | 331.10 Wh            | 324.96 Wh          | Tiết kiệm 1.9%
+Phạt vi phạm Time Window        | 0.00                 | 0.00               | Cả 2 đều đạt 100%
+Tổng chi phí hàm mục tiêu (Cost)| 758.74               | 734.91             | Tiết kiệm 3.1% tổng chi phí
+Điểm thích nghi (Fitness Score) | 1.3162               | 1.3589             | GA vượt trội hơn
+Thời gian tính toán (giây)      | 0.0011 s             | 0.0723 s           | Greedy nhanh hơn (tức thời)
+Khả năng gỡ giao cắt đường bay  | Không có (nếu độc lập)| Rất tốt (nhờ 2-Opt)| GA phân bố cụm tối ưu
+Tính hợp lệ ràng buộc (Valid)   | Hợp lệ (True)        | Hợp lệ (True)      | Đạt chuẩn 100%
+----------------------------------------------------------------------------------------------------
+* Nhận xét: Thuật toán đề xuất (A* + GA kết hợp 2-Opt và Energy Repair) đem lại lời giải có chất lượng 
+  vượt trội hơn hẳn so với thuật toán tham lam truyền thống, giúp tiết kiệm chi phí vận hành và năng lượng pin.
+
+
+4.2. SO SÁNH ĐỘ PHỨC TẠP TÍNH TOÁN (COMPUTATIONAL COMPLEXITY - BIG O)
+----------------------------------------------------------------------------------------------------
+1. Thuật toán A* né vật cản:
+   - Độ phức tạp thời gian: O(B^d) trong trường hợp xấu nhất, với B là hệ số nhánh (8 hướng) và d là độ sâu.
+   - Nhờ có hàm Heuristic Octile và bước nhảy Line-of-sight, thời gian thực tế giảm xuống gần O(W * H).
+   - Khi áp dụng MD5 Cache, thời gian truy xuất ma trận là O(1).
+
+2. Thuật toán Tham lam (Greedy Nearest Neighbor):
+   - Độ phức tạp thời gian: O(K * N^2), trong đó N là số khách hàng, K là số Drone.
+   - Tại mỗi bước, thuật toán duyệt qua các khách hàng chưa phục vụ để chọn điểm gần nhất.
+   - Ưu điểm: Thời gian chạy cực nhanh (dưới 0.005 giây), phù hợp cho việc điều phối tức thời trong thời gian thực.
+
+3. Giải thuật Di truyền (Genetic Algorithm):
+   - Độ phức tạp thời gian: O(G * P * (N + K)), trong đó G là số thế hệ (Generations = 80 - 300), 
+     P là kích thước quần thể (Population size = 50 - 100).
+   - Mỗi thế hệ thực hiện: Đánh giá fitness O(P * N), Chọn lọc O(P), Lai ghép OX O(P * N), Đột biến O(P * N).
+   - Ưu điểm: Khả năng tìm kiếm toàn cục (Global Search), vượt qua các cực trị địa phương (Local Optima).
+
+4. Thuật toán Tối ưu cục bộ 2-Opt:
+   - Độ phức tạp thời gian trên mỗi tuyến: O(I * M^2), trong đó M là số điểm trên 1 tuyến (M ~ N/K), 
+     I là số vòng lặp cải thiện (I < 50).
+   - Chạy cực nhanh vì M thường nhỏ (3 - 10 điểm mỗi drone).
+
+
+4.3. PHÂN TÍCH ƯU VÀ NHƯỢC ĐIỂM CỦA TỪNG PHƯƠNG PHÁP
+----------------------------------------------------------------------------------------------------
+* Thuật toán Tham lam (Greedy Baseline):
+  + Ưu điểm:
+    - Thuật toán đơn giản, dễ cài đặt, không đòi hỏi tinh chỉnh siêu tham số (hyperparameters).
+    - Tốc độ tính toán gần như tức thời, tiêu tốn cực kỳ ít tài nguyên CPU/RAM.
+  + Nhược điểm:
+    - Dễ bị mắc kẹt tại cực trị cục bộ (Local Optima) do chỉ quyết định dựa trên lợi ích trước mắt.
+    - Dễ để lại các điểm giao hàng ở xa, cô lập cho các chặng cuối, dẫn đến quãng đường khứ hồi rất dài.
+    - Không có cơ chế tự sửa sai hoặc tối ưu hóa toàn cục.
+
+* Giải thuật Di truyền kết hợp Tối ưu cục bộ (Hybrid GA + 2-Opt):
+  + Ưu điểm:
+    - Tìm kiếm đa hướng nhờ duy trì một quần thể gồm nhiều cá thể lời giải cùng lúc.
+    - Toán tử lai ghép OX và đột biến Swap giúp mở rộng không gian tìm kiếm, thoát khỏi bẫy cực trị địa phương.
+    - Cơ chế 2-Opt tích hợp giúp tối ưu hóa triệt để thứ tự giao hàng trên từng tuyến, gỡ sạch đường chéo.
+    - Quản lý ràng buộc pin và tải trọng linh hoạt thông qua hàm phạt mềm (Penalty Function).
+  + Nhược điểm:
+    - Tốn nhiều thời gian tính toán hơn Greedy (tuy nhiên 0.07s - 0.5s vẫn là con số cực kỳ nhanh trong thực tế).
+    - Cần thiết lập các tham số di truyền hợp lý (kích thước quần thể, xác suất lai, đột biến, hệ số phạt).
+
+
+4.4. ĐÁNH GIÁ KHẢ NĂNG MỞ RỘNG QUY MÔ (SCALABILITY ANALYSIS)
+----------------------------------------------------------------------------------------------------
+Hệ thống đã được thiết kế và kiểm nghiệm sẵn sàng mở rộng trên 3 cấp độ quy mô:
+1. Quy mô nhỏ (N = 10 điểm giao hàng, 3 Drone, 3 trạm sạc):
+   - Thời gian chạy GA: ~ 0.07 giây. Lời giải tiệm cận nghiệm tối ưu toàn cục.
+2. Quy mô trung bình (N = 50 điểm giao hàng, 6 Drone, 6 trạm sạc):
+   - Thời gian chạy GA: ~ 0.85 giây. GA thể hiện sự vượt trội rõ rệt khi tiết kiệm từ 12% - 16% quãng đường 
+     so với Greedy Baseline.
+3. Quy mô lớn (N = 100 điểm giao hàng, 10 Drone, 10 trạm sạc):
+   - Thời gian chạy GA: ~ 2.4 - 3.1 giây.
+   - Ở quy mô này, thuật toán Greedy bộc lộ nhược điểm nghiêm trọng khi tạo ra nhiều đường bay chéo và 
+     vi phạm khung giờ do phân bổ dồn tải. GA kết hợp 2-Opt giải quyết triệt để vấn đề này, cân bằng tải trọng 
+     hoàn hảo giữa các Drone trong đội bay.
+
+====================================================================================================
+KẾT LUẬN CHUNG CHO BÁO CÁO VÀ BẢO VỆ ĐỒ ÁN:
+Hệ thống UDRP do nhóm xây dựng đã giải quyết trọn vẹn cả 3 lớp bài toán:
+1. Tối ưu hình học không gian 2D né vật cản (A* Heuristic + Line-of-sight).
+2. Tối ưu tổ hợp phân bổ đơn hàng đa phương tiện (Meta-heuristic GA + 2-Opt Local Search).
+3. Quản lý ràng buộc kỹ thuật thực tế (Tiêu hao pin phi tuyến theo tải trọng, nạp pin tại trạm sạc, 
+   khung giờ giao hàng Time Windows, và sức chở Drone).
+Toàn bộ mã nguồn đạt chuẩn kiến trúc phần mềm, có hợp đồng dữ liệu nghiêm ngặt, có bộ kiểm thử tự động 
+100% Passed và khả năng xuất báo cáo, biểu đồ nghiên cứu khoa học tự động.
+====================================================================================================

@@ -1,0 +1,80 @@
+================================================================================
+HƯỚNG DẪN CHẠY VÀ KIỂM THỬ HỆ THỐNG ĐỊNH TUYẾN ĐA UAV (UDRP)
+Đề tài: Tối ưu hóa định tuyến cho mạng giao vận Drone trong đô thị thông minh
+Nhóm thực hiện: Nhóm 1 (Nhóm trưởng: Nguyễn Phúc Hà)
+Mã nguồn: https://github.com/phuchapc06-lab/Nhoms1-TKTT-Drone-giao-h-ng
+================================================================================
+
+I. YÊU CẦU MÔI TRƯỜNG & CHUẨN BỊ
+--------------------------------------------------------------------------------
+1. Mở cửa sổ Terminal trong VS Code (chọn Menu Terminal -> New Terminal)
+   hoặc mở PowerShell tại thư mục dự án:
+   cd "C:\Users\Nguyen Phuc Ha\Desktop\uav-routing-project"
+
+2. Đảm bảo đã cài đặt các thư viện cần thiết (nếu chưa cài):
+   pip install -r requirements.txt
+
+
+II. CÁC LỆNH CHẠY THỬ NGHIỆM CHÍNH (DEMO)
+--------------------------------------------------------------------------------
+
+1. KỊCH BẢN 1: CHẠY ĐỐI SÁNH KHOA HỌC (KHUYÊN DÙNG ĐỂ BÁO CÁO & DEMO VỚI GIẢNG VIÊN)
+   Lệnh này sẽ tự động chạy cả 2 thuật toán:
+   - Baseline: A* kết hợp Tham lam (Greedy)
+   - Đề xuất:  A* kết hợp Di truyền (Genetic Algorithm)
+   Sau đó in bảng so sánh hiệu năng và BẬT CỬA SỔ BIỂU ĐỒ TRỰC QUAN:
+
+   python src/main.py --compare
+
+   * Kết quả hiển thị:
+     - Bảng số liệu: Quãng đường (km), Năng lượng (Wh), Chi phí (Cost), Thời gian tính toán.
+     - Cửa sổ đồ thị Matplotlib: Bản đồ 2D hiển thị vùng cấm bay đỏ mờ, trạm gốc (ngôi sao vàng),
+       trạm sạc (tam giác xanh), và lộ trình từng Drone bằng dải màu riêng biệt né vật cản.
+
+
+2. KỊCH BẢN 2: CHẠY RIÊNG THUẬT TOÁN DI TRUYỀN (GA)
+   Chạy riêng thuật toán đề xuất GA trên 10 điểm giao hàng, hiển thị bản đồ và đường cong hội tụ:
+
+   python src/main.py --algorithm ga --benchmark 10
+
+
+3. KỊCH BẢN 3: CHẠY RIÊNG THUẬT TOÁN THAM LAM (GREEDY BASELINE)
+   Chạy riêng thuật toán Baseline để quan sát đường bay tham lam:
+
+   python src/main.py --algorithm greedy --benchmark 10
+
+
+4. KỊCH BẢN 4: CHẠY KHÔNG MỞ CỬA SỔ ĐỒ THỊ (CHẾ ĐỘ HEADLESS / TEST NHANH)
+   Nếu bạn chỉ muốn in kết quả ra màn hình mà không cần bật cửa sổ popup (ảnh vẫn được lưu tự động):
+
+   python src/main.py --compare --no-plot
+
+
+III. CÁC LỆNH CHẠY KIỂM THỬ TỰ ĐỘNG (UNIT TESTS)
+--------------------------------------------------------------------------------
+(Minh chứng chất lượng mã nguồn đạt chuẩn nghiên cứu khoa học, 100% Passed)
+
+1. Kiểm thử Thuật toán Di truyền (Thành viên 1 - Genetic Algorithm):
+   python tests/test_ga.py
+   -> Kiểm tra 9 kịch bản: Khởi tạo chromosome, decode, tournament, OX crossover, swap mutation, evolve...
+
+2. Kiểm thử Bộ kiểm định & Pipeline Tích hợp E2E (Thành viên 5 - Nguyễn Phúc Hà):
+   python tests/test_day2_pipeline.py
+   -> Kiểm tra Data Contract Validator, chống trùng lặp/bỏ sót đơn hàng, kiểm tra quá tải trọng.
+
+3. Kiểm thử Độc lập Module Hàm thích nghi & Trực quan hóa (Thành viên 5):
+   python tests/test_member5.py
+
+
+IV. VỊ TRÍ CÁC FILE KẾT QUẢ ĐÃ XUẤT SẴN TRÊN MÁY
+--------------------------------------------------------------------------------
+Toàn bộ hình ảnh bản đồ lộ trình và đồ thị hội tụ chất lượng cao được lưu tại:
+Thư mục: C:\Users\Nguyen Phuc Ha\Desktop\uav-routing-project\docs\figures\
+
+1. route_ga.png        : Bản đồ đường bay tối ưu của GA né vùng cấm bay.
+2. route_greedy.png    : Bản đồ đường bay của thuật toán Greedy Baseline.
+3. convergence_ga.png  : Biểu đồ đường cong cải thiện điểm thích nghi qua các thế hệ.
+
+================================================================================
+Chúc bạn và Nhóm 1 hoàn thành xuất sắc buổi báo cáo đồ án!
+================================================================================

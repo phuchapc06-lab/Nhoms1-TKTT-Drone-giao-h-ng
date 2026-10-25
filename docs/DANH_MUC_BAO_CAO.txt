@@ -1,0 +1,78 @@
+# DANH MỤC CÁC TÀI LIỆU BÁO CÁO ĐỒ ÁN UAV DELIVERY ROUTING PROBLEM (UDRP)
+Thư mục lưu trữ: Documents\Bao_Cao_Do_An_UAV_Routing
+Phụ trách (Tech Lead): Nguyễn Phúc Hà (Thành viên 5) - Nhóm 1
+
+================================================================================
+1. CÁC BÁO CÁO KHOA HỌC & TỔNG KẾT CHÍNH
+================================================================================
+- BAO_CAO_TONG_KET_SPRINT_4_NGAY.md:
+  * Báo cáo tổng kết toàn diện toàn bộ đề tài sau Sprint nén 4 ngày (gộp Tuần 5 & Tuần 6).
+  * Bao gồm: Tổng quan kết quả, kiến trúc 3 tầng, bảng đối sánh đa quy mô N=6..500, đo đạc tăng tốc song song Sp=1.95x, phân tích Big-O, tóm tắt 5 định lý toán học và Checklist sẵn sàng bảo vệ đề tài (Defense Readiness).
+
+- COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md:
+  * Báo cáo phân tích chuyên sâu độ phức tạp thuật toán (Time & Space Complexity) cho cả 5 phân hệ (A*, GA, Greedy, 2-Opt, EnergyManager) và Pipeline E2E.
+  * Chứng minh hình thức và chặt chẽ 5 Định lý Toán học cốt lõi (Heuristic Octile, Toán tử di truyền OX/Swap, Tính đơn điệu 2-Opt, Tính an toàn pin & dừng của EnergyManager, Tính không suy giảm của Hybrid GA Seeding).
+
+- EXPERIMENT_RESULTS.md:
+  * Báo cáo kết quả đo đạc thực nghiệm đối sánh đa quy mô giữa A* + GA (đề xuất) và A* + Greedy (chuẩn đối sánh).
+  * Chứa đầy đủ các bảng số liệu chi tiết: Quãng đường (km), Năng lượng (Wh), Tỷ lệ đúng giờ (%), Thời gian chạy (s), và Tăng tốc đa luồng.
+
+- NGUYEN_PHUC_HA_CONTRIBUTION.md:
+  * Báo cáo minh chứng chi tiết từng đầu việc, hàm, lớp, test suite và các mốc tích hợp của Nhóm trưởng Nguyễn Phúc Hà trong suốt Sprint 1 tuần và Sprint nén 4 ngày.
+
+- TV1_CONTRIBUTION.md:
+  * Báo cáo đóng góp cá nhân của Thành viên 1 (Lõi thuật toán Di truyền GA và Tinh chỉnh siêu tham số).
+
+- GA_TUNING_RESULTS.md:
+  * Báo cáo kết quả quét và tinh chỉnh siêu tham số di truyền tối ưu (Population size, Crossover rate, Mutation rate).
+
+- Mathematical_Model.md:
+  * Mô hình hóa bài toán định tuyến UAV giao hàng đô thị thông minh bằng công thức toán học hình thức (Hàm mục tiêu đa tiêu chí và hệ thống ràng buộc).
+
+================================================================================
+2. TÀI LIỆU QUẢN LÝ TIẾN ĐỘ & HƯỚNG DẪN HỆ THỐNG
+================================================================================
+- TIEN_DO.md:
+  * Bảng theo dõi và quản lý tiến độ chi tiết từng ngày của cả Sprint 1 tuần và Sprint nén 4 ngày, lưu vết toàn bộ kết quả nghiệm thu.
+
+- README.md:
+  * Tài liệu hướng dẫn sử dụng chính thức của dự án: Cài đặt, kiến trúc hệ thống, chạy CLI dòng lệnh, chạy kiểm thử và phân công nhóm.
+
+- KE_HOACH_TUAN_5_6_RUT_GON_4_NGAY.md:
+  * Bản kế hoạch phân bổ chi tiết các đầu việc khi nén 2 tuần (Tuần 5 & 6) vào 4 ngày (Thứ 4 -> Thứ 7).
+
+- KE_HOACH_PHAN_CONG_NHOM_6_NGUOI.txt:
+  * Bản phân công nhiệm vụ và trách nhiệm cụ thể của từng thành viên trong nhóm 6 người.
+
+- GIAI_THICH_THUAT_TOAN_VA_TEST_UDRP.txt:
+  * Bản giải thích cặn kẽ từng thuật toán, các trường hợp biên, các kịch bản test và so sánh đối sánh.
+
+- HUONG_DAN_CHAY_TEST.txt:
+  * Hướng dẫn nhanh cách chạy các bộ kiểm thử độc lập và toàn diện của dự án.
+
+- benchmark_comparison_results.csv:
+  * File dữ liệu bảng số liệu thực nghiệm gốc (CSV) lưu trữ toàn bộ các chỉ số đo đạc trên mọi thang đo.
+
+================================================================================
+3. THƯ MỤC BIỂU ĐỒ NGHIÊN CỨU KHOA HỌC (figures/)
+================================================================================
+- figures/comparison_bars.png:
+  * Biểu đồ cột nhóm so sánh quãng đường (km), năng lượng (Wh) và thời gian (s).
+
+- figures/ontime_rate_comparison.png:
+  * Biểu đồ đối sánh tỷ lệ giao hàng đúng giờ (On-time Delivery Rate, %) theo cửa sổ thời gian (Time Windows).
+
+- figures/scalability_analysis.png:
+  * Đồ thị phân tích khả năng mở rộng quy mô từ 10 đến 500 khách hàng.
+
+- figures/speedup_analysis.png:
+  * Đồ thị hệ số tăng tốc thực nghiệm Sp = T1 / Tp so với đường tăng tốc tuyến tính lý tưởng khi tính ma trận khoảng cách song song.
+
+- figures/route_ga.png:
+  * Bản đồ không gian 2D trực quan hóa đường bay đa UAV của thuật toán A* + GA né tránh vùng cấm bay.
+
+- figures/route_greedy.png:
+  * Bản đồ đường bay của thuật toán Baseline Greedy.
+
+- figures/convergence_ga.png:
+  * Đồ thị đường cong hội tụ hàm thích nghi của Giải thuật Di truyền qua các thế hệ.

@@ -5,7 +5,7 @@
 
 ## 🎯 Tổng quan Tiến độ Sprint 1 Tuần (7 Ngày)
 - **Mục tiêu:** Xây dựng hệ thống hoàn chỉnh giải bài toán Định tuyến Đội bay UAV giao hàng trong đô thị né vùng cấm bay, quản lý pin và tối ưu hóa đa mục tiêu.
-- **Trạng thái:** **HOÀN THÀNH 100% TOÀN DỰ ÁN (SẴN SÀNG CHO TUẦN LÀM VIỆC MỚI)**.
+- **Trạng thái:** Đã hoàn thành các nhiệm vụ tính đến Thứ Sáu (23/10/2026).
 
 ---
 
@@ -45,7 +45,7 @@
 
 ---
 
-## 🚀 SPRINT NÉN 4 NGÀY (GỘP TUẦN 5 & TUẦN 6): THỰC NGHIỆM ĐA QUY MÔ, SONG SONG HÓA & ĐỘ PHỨC TẠP
+## 📅 TIẾN ĐỘ TUẦN 5 & TUẦN 6 (Cập nhật đến Thứ Bảy - 24/10/2026)
 
 ### Ngày 1: Thứ Tư (21/10/2026) - Thiết kế Song song hóa & Đo lường Tỷ lệ Giao hàng Đúng giờ
 - **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
@@ -62,6 +62,42 @@
   - **Bộ Kiểm thử Độc lập:**
     - Xây dựng bộ test mới `tests/test_day1_parallel_ontime.py` kiểm thử toàn diện 4 chức năng mới (100% Passed).
     - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **11/11 Suites Passed (100%)**.
+
+### Ngày 2: Thứ Năm (22/10/2026) - Chạy Thực nghiệm Đối sánh Đa quy mô & Đo đạc Hiệu năng
+- **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
+  - **Nâng cấp `BenchmarkEvaluator` & `UAVVisualizer`:**
+    - Bổ sung hàm `run_speedup_benchmark()` đo đạc thực nghiệm hệ số tăng tốc $S_p = T_1 / T_p$ và hiệu suất song song $E_p = S_p / p$ trên các tập benchmark quy mô lớn.
+    - Cài đặt phương thức `plot_speedup_analysis()` trong `UAVVisualizer` xuất tự động biểu đồ khoa học `docs/figures/speedup_analysis.png`.
+  - **Thực thi Đo đạc Thực nghiệm Đa quy mô Toàn diện:**
+    - Điều phối chạy bộ thử nghiệm trên chuỗi quy mô $N = [10, 20, 30, 50]$ điểm giao hàng.
+    - Cập nhật tự động báo cáo nghiên cứu khoa học `docs/EXPERIMENT_RESULTS.md` với đầy đủ 4 chỉ số cốt lõi: Quãng đường (Distance), Tiêu thụ Pin (Energy), Tỷ lệ giao đúng giờ (On-time Delivery Rate: đạt **97.4%**), Thời gian tính toán (Execution Time) và Bảng đo Speedup song song.
+    - Xuất dữ liệu bảng chuẩn xác ra file CSV: `data/processed/benchmark_comparison_results.csv`.
+    - Xuất bộ 3 biểu đồ nghiên cứu khoa học độ phân giải cao: `comparison_bars.png`, `scalability_analysis.png`, `speedup_analysis.png`.
+  - **Bộ Kiểm thử Độc lập Ngày 2:**
+    - Xây dựng bộ kiểm thử mới `tests/test_day2_benchmark_speedup.py` bao quát 4 bài test độc lập (100% Passed).
+    - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **12/12 Suites Passed (100%)**.
+
+### Ngày 3: Thứ Sáu (23/10/2026) - Phân tích Độ phức tạp Thuật toán & Chứng minh Tính đúng đắn
+- **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
+  - **Tổng hợp Báo cáo Toán học Chuyên sâu (`docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md`):**
+    - Phân tích chi tiết độ phức tạp thời gian và không gian cho 5 module: A* Pathfinding $O(WH \log(WH))$, GA Meta-heuristic $O(G \cdot P \cdot (N+K))$, Greedy Baseline $O(K \cdot N^2)$, 2-Opt Local Search $O(I \cdot N^2)$, Energy Manager $O(N \cdot C)$, và toàn trình Pipeline tích hợp.
+    - Chứng minh toán học nghiêm ngặt 5 định lý cốt lõi:
+      1. *Định lý 1:* Tính tối ưu toàn cục và nhất quán của hàm Heuristic Octile trong thuật toán A*.
+      2. *Định lý 2:* Tính bất biến bảo toàn lời giải hợp lệ của toán tử Order Crossover (OX) và Swap Mutation trong GA.
+      3. *Định lý 3:* Tính đơn điệu không tăng quãng đường và tính dừng hữu hạn bước của 2-Opt ($d_{new} \le d_{old}$).
+      4. *Định lý 4:* Tính dừng không lặp vô hạn và tính an toàn pin tuyệt đối ($E_{battery} \ge 15\%$) của Energy Manager.
+      5. *Định lý 5:* Tính không suy giảm nghiệm của cơ chế Hybrid GA Seeding ($Cost_{GA} \le Cost_{Greedy}$).
+    - Đối chiếu thực nghiệm: Đo đạc thời gian chạy đa quy mô khẳng định tính phù hợp tuyệt đối giữa thực tế và lý thuyết Big-$O$.
+  - **Bộ Kiểm thử Độc lập Ngày 3:**
+    - Xây dựng bộ kiểm thử mới `tests/test_day3_complexity_correctness.py` kiểm chứng toàn diện 5 định lý toán học (100% Passed).
+    - Nâng cấp Master Test Runner `tests/run_all_tests.py` lên **13/13 Suites Passed (100%)**.
+
+### Ngày 4: Thứ Bảy (24/10/2026) - Trực quan hóa tỷ lệ đúng giờ, tổng kết đề tài & kiểm thử hệ thống
+- **Thành viên 5 (Tech Lead - Nguyễn Phúc Hà):**
+  - **Nâng cấp trực quan hóa:** Cài đặt phương thức `plot_ontime_rate_comparison()` trong `UAVVisualizer`, xuất biểu đồ đối sánh tỷ lệ giao hàng đúng giờ `docs/figures/ontime_rate_comparison.png`.
+  - **Báo cáo tổng kết đề tài:** Soạn thảo tài liệu tổng kết hệ thống [`docs/BAO_CAO_TONG_KET_DE_TAI.md`](docs/BAO_CAO_TONG_KET_DE_TAI.md) bao quát kiến trúc, bảng số liệu đối sánh, tăng tốc song song và tóm tắt chứng minh toán học.
+  - **Bộ kiểm thử Ngày 4:** Xây dựng `tests/test_day4_tong_ket.py` kiểm thử toàn diện các biểu đồ khoa học, dữ liệu đối sánh và luồng tích hợp E2E Pipeline (đạt 100% Passed).
+  - **Nâng cấp Master Test Runner:** Cập nhật `tests/run_all_tests.py` chạy toàn bộ 14/14 test suites đạt kết quả 100% Passed.
 
 ---
 

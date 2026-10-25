@@ -265,3 +265,109 @@ class UAVVisualizer:
         if show:
             plt.show()
         return fig, (ax1, ax2)
+
+    def plot_speedup_analysis(
+        self,
+        workers: List[int],
+        speedups: List[float],
+        times: Optional[List[float]] = None,
+        title: str = "Đánh giá Tăng tốc Song song hóa A* (Parallel Speedup Analysis)",
+        save_path: Optional[str] = None,
+        show: bool = False
+    ):
+        """
+        Vẽ đồ thị phân tích hệ số tăng tốc Sp = T1 / Tp so sánh với đường tăng tốc tuyến tính lý tưởng (Ideal Linear Speedup).
+        """
+        fig, axes = plt.subplots(1, 2 if times else 1, figsize=(12 if times else 7, 5))
+        ax1 = axes[0] if times else axes
+
+        # Trục 1: Hệ số tăng tốc (Speedup Sp)
+        ax1.plot(workers, speedups, marker="o", color="#1f77b4", linewidth=2.2, label="Thực nghiệm (A* ThreadPool)")
+        ax1.plot(workers, workers, linestyle="--", color="#d62728", alpha=0.7, label="Lý tưởng (Tuyến tính Sp = p)")
+        ax1.set_title("Hệ số Tăng tốc (Speedup factor $S_p$)", fontweight="bold")
+        ax1.set_xlabel("Số lượng Luồng / CPU Cores (p)")
+        ax1.set_ylabel("Speedup ($S_p = T_1 / T_p$)")
+        ax1.set_xticks(workers)
+        ax1.grid(True, linestyle="--", alpha=0.5)
+        ax1.legend()
+
+        for x, y in zip(workers, speedups):
+            ax1.annotate(f"{y:.2f}x", (x, y), textcoords="offset points", xytext=(0, 8), ha="center", fontweight="bold")
+
+        # Trục 2: Thời gian thực thi (nếu có dữ liệu times)
+        if times:
+            ax2 = axes[1]
+            ax2.bar([str(w) for w in workers], times, color="#2ca02c", edgecolor="black", width=0.45)
+            ax2.set_title("Thời gian tính toán A* (giây)", fontweight="bold")
+            ax2.set_xlabel("Số lượng Luồng / CPU Cores (p)")
+            ax2.set_ylabel("Thời gian (s)")
+            ax2.grid(axis="y", linestyle="--", alpha=0.5)
+            for idx, (w, t) in enumerate(zip(workers, times)):
+                ax2.text(idx, t + max(times) * 0.02, f"{t:.4f}s", ha="center", fontweight="bold")
+
+        fig.suptitle(title, fontsize=13, fontweight="bold", y=1.02)
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            try:
+                print(f"[Visualizer] Đã lưu biểu đồ Speedup vào: {save_path}")
+            except UnicodeEncodeError:
+                print(f"[Visualizer] Da luu bieu do Speedup vao: {save_path}")
+
+        if show:
+            plt.show()
+        return fig, axes
+
+
+    def plot_ontime_rate_comparison(
+        self,
+        scales: List[int],
+        greedy_rates: List[float],
+        ga_rates: List[float],
+        title: str = "Đánh giá Tỷ lệ Giao hàng Đúng giờ (On-time Delivery Rate, %)",
+        save_path: Optional[str] = None,
+        show: bool = False
+    ):
+        """
+        Vẽ biểu đồ đối sánh tỷ lệ giao hàng đúng giờ (%) giữa Greedy Baseline và GA Meta-heuristic
+        trên chuỗi kịch bản đa quy mô có ràng buộc cửa sổ thời gian (Time Windows).
+        """
+        import numpy as np
+        fig, ax = plt.subplots(figsize=(9, 5))
+
+        x = np.arange(len(scales))
+        width = 0.35
+
+        bars1 = ax.bar(x - width/2, greedy_rates, width, label="Greedy Baseline (TV6)", color="#d62728", alpha=0.85, edgecolor="black")
+        bars2 = ax.bar(x + width/2, ga_rates, width, label="A* + GA Đề xuất (Nhóm 1)", color="#2ca02c", alpha=0.85, edgecolor="black")
+
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=12)
+        ax.set_xlabel("Quy mô số lượng khách hàng (N điểm)", fontweight="bold")
+        ax.set_ylabel("Tỷ lệ Giao đúng giờ (%)", fontweight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"N={s}" for s in scales])
+        ax.set_ylim(0, 115)
+        ax.axhline(100, color="gray", linestyle=":", alpha=0.6, label="Mục tiêu tối đa (100%)")
+        ax.grid(axis="y", linestyle="--", alpha=0.5)
+        ax.legend(loc="lower left", framealpha=0.9)
+
+        for bar in bars1:
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., h + 1.5, f"{h:.1f}%", ha="center", va="bottom", fontsize=9, fontweight="bold")
+
+        for bar in bars2:
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., h + 1.5, f"{h:.1f}%", ha="center", va="bottom", fontsize=9, fontweight="bold", color="#1a6e1a")
+
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            try:
+                print(f"[Visualizer] Đã lưu biểu đồ On-time Rate vào: {save_path}")
+            except UnicodeEncodeError:
+                print(f"[Visualizer] Da luu bieu do On-time Rate vao: {save_path}")
+
+        if show:
+            plt.show()
+        return fig, ax
