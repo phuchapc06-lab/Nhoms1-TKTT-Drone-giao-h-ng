@@ -127,7 +127,9 @@ class DataContractValidator:
     def validate_solution(
         solution: List[List[int]],
         nodes: Dict[int, Dict[str, Any]],
-        drone_capacity: float = 5.0
+        drone_capacity: float = 5.0,
+        dist_matrix: Any = None,
+        energy_manager: Any = None
     ) -> Tuple[bool, List[str]]:
         """
         Kiem tra tinh hop le cua Loi giai dinh tuyen da UAV (do TV1 hoac TV6 sinh ra).
@@ -135,6 +137,8 @@ class DataContractValidator:
         1. Moi tuyen phai bat dau va ket thuc tai Depot (0).
         2. Tat ca cac diem giao hang (delivery) phai duoc phuc vu dung 1 lan duy nhat.
         3. Tong tai trong tren moi tuyen khong duoc vuot qua gioi han drone_capacity.
+        4. (Khi truyen dist_matrix va energy_manager) Khong tuyen nao can pin giua duong
+           (rang buoc pin 4.2 cua Mathematical_Model.md; kiem tra tren tuyen da chen tram sac).
         """
         errors = []
 
@@ -174,6 +178,12 @@ class DataContractValidator:
                 errors.append(
                     f"Tuyen Drone #{drone_idx + 1} vi pham tai trong toi da: {route_demand:.2f}kg > {drone_capacity:.2f}kg."
                 )
+
+            # Kiem tra pin: Drone khong duoc can pin tren bat ky chang nao
+            if dist_matrix is not None and energy_manager is not None:
+                _, battery_ok = energy_manager.calculate_route_energy(route, dist_matrix, nodes)
+                if not battery_ok:
+                    errors.append(f"Tuyen Drone #{drone_idx + 1} can pin giua duong (ke ca sau khi chen tram sac).")
 
         # Kiem tra tinh toan ven cua tap diem giao hang
         visited_set = set(visited_deliveries)

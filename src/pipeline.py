@@ -494,7 +494,9 @@ class UAVRoutingPipeline:
         fitness, total_cost, breakdown = self.fitness_calc.evaluate_solution(
             solution, self.dist_matrix, self.nodes, self.energy_manager
         )
-        is_valid, validation_errors = self.validator.validate_solution(solution, self.nodes, self.drone_capacity)
+        is_valid, validation_errors = self.validator.validate_solution(
+            solution, self.nodes, self.drone_capacity, self.dist_matrix, self.energy_manager
+        )
 
         on_time_rate = float(breakdown.get("on_time_rate", 100.0))
         res = {
