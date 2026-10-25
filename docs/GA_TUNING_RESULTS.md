@@ -1,7 +1,7 @@
 # Tinh chỉnh & đánh giá Giải thuật Di truyền (GA)
 **Phụ trách:** Thành viên 1 (GA Core Engine) · **Ngày:** 16/10/2026 · **Script:** `src/utils/ga_tuning.py`
 
-> **Cập nhật 25/10/2026:** mục 1–9 đo trên dữ liệu benchmark ngày 16/10. Sau đó TV4 đã đổi khối lượng hàng. Số liệu trên dữ liệu hiện tại (10 / 50 / 100 / 500 điểm, có tỷ lệ đúng giờ và số tuyến thiếu pin) ở **mục 11**; Speedup song song ở **mục 10**.
+> **Cập nhật 25/10/2026:** mục 1–9 đo trên dữ liệu benchmark ngày 16/10. Sau đó TV4 đã đổi khối lượng hàng. Số liệu trên dữ liệu hiện tại (10 / 50 / 100 / 500 điểm, có tỷ lệ đúng giờ và số tuyến thiếu pin) ở **mục 12** (EnergyManager mới của TV3; mục 11 là cùng thực nghiệm với EnergyManager cũ); Speedup song song ở **mục 10**.
 
 ## 1. Kết luận chính
 | Quy mô | Greedy + 2-Opt | GA trước tinh chỉnh (cấu hình cũ của pipeline) | GA sau tinh chỉnh (đề xuất) |
@@ -162,6 +162,8 @@ python src/utils/ga_tuning.py speedup --scales 10 50 100 500 --workers 1 2 4 8 -
 Mất khoảng 25 phút; lần đầu chạy 500 điểm cần tính ma trận A* (~50 s với 8 tiến trình, sau đó dùng cache `data/processed/distance_matrix_500.pkl`).
 
 ## 11. So sánh với Greedy trên dữ liệu hiện tại, 10–500 điểm (cập nhật 25/10/2026)
+> Đo với `EnergyManager` trước commit `bb86a29` của TV3. Số liệu hiện hành ở **mục 12**. Cột "trước 2-Opt" ở mục này đếm theo cờ của `repair_route_with_charging` (tính cả tuyến chỉ xuống dưới ngưỡng 15%), khác thước đo của cột "Tuyến thiếu pin"; mục 12 đã thống nhất.
+
 **Thiết lập:**
 - Dữ liệu `data/raw/benchmark_{10,50,100,500}.json` bản trên `develop` ngày 25/10 (tổng hàng 10.5 / 61.9 / 125.7 / 623.2 kg). K = ⌈1.2 × tổng hàng / 5 kg⌉ = 3 / 15 / 31 / 150.
 - Luồng đánh giá như mục 2: thuật toán → 2-Opt → chèn trạm sạc → `FitnessCalculator` → `DataContractValidator`. Không có dòng `[Pipeline] Chạy fallback GA` trong log.
@@ -224,3 +226,37 @@ python src/utils/ga_tuning.py compare --scales 10 --seeds 5 --pop-size 100 --mut
 python src/utils/ga_tuning.py compare --scales 50 100 --seeds 5 --pop-size 100 --mutation-rate 0.5 --generations 2000 --workers 8
 python src/utils/ga_tuning.py compare --scales 500 --seeds 3 --pop-size 100 --mutation-rate 0.5 --generations 2000 --workers 8 --only-proposed
 ```
+
+## 12. Chạy lại mục 11 với EnergyManager mới của TV3 (cập nhật 25/10/2026)
+**Thay đổi so với mục 11:**
+- `EnergyManager` sau commit `faea2f0` của TV3 (`develop` `0ae7a4a`): khi cần sạc, Drone có thể **ghé depot** như một trạm sạc; danh sách trạm sạc không còn lọc lại mỗi lần gọi. Ngưỡng 15% áp dụng khi bay tới điểm giao; khi tới depot / trạm sạc chỉ cần pin không âm.
+- Sửa thước đo của `ga_tuning.py`: cột "trước 2-Opt" nay chèn trạm sạc rồi kiểm tra pin âm bằng `calculate_route_energy`, giống cột "Tuyến thiếu pin" và giống phép phạt của `FitnessCalculator`. Trước đây cột này dùng cờ của `repair_route_with_charging`, cờ đó còn báo cả tuyến chỉ xuống dưới 15% (vd. seed 0 ở 500 điểm: 2 tuyến về đích với 2.5% pin, không cạn).
+- Dữ liệu, tham số, seed, số tiến trình giữ nguyên như mục 11. Không có dòng `[Pipeline] Chạy fallback GA` trong log.
+
+| Quy mô | K | Greedy + 2-Opt | GA đề xuất (TB ± ĐLC) | Chênh lệch tổng chi phí | Đúng giờ Greedy → GA | Tuyến thiếu pin Greedy → GA | Thời gian GA (s) |
+| :---: | :---: | ---: | ---: | :---: | :---: | :---: | ---: |
+| 10 điểm | 3 | 749.02 | 706.50 ± 0.00 | **−5.68%** | 100.0% → 100.0% | 0 → 0 | 5.6 |
+| 50 điểm | 15 | 4039.25 | 3806.67 ± 45.79 | **−5.76%** | 98.0% → 99.6% | 0 → 0 | 13.2 |
+| 100 điểm | 31 | 12967.07 | 11742.24 ± 251.35 | **−9.45%** | 94.0% → 96.6% | **1 → 0** | 25.2 |
+| 500 điểm | 150 | 95208.86 | 103140.25 ± 4089.89 | +8.33% | 93.8% → 93.3% | **6 → 0.7** | 176.1 |
+
+Mọi lời giải đều được validator báo hợp lệ.
+
+**Thang cải tiến** (chênh lệch tổng chi phí so với Greedy, 5 seed):
+
+| Biến thể GA | 10 điểm | 50 điểm | 100 điểm |
+| :--- | :---: | :---: | :---: |
+| Cấu hình cũ của pipeline (80 thế hệ, 50 cá thể, phạt gốc) | −1.05% | +46.82% (3/5 hợp lệ) | +71.93% (0/5 hợp lệ) |
+| Tham số tinh chỉnh | −2.31% | +4.23% | +8.79% |
+| + EnergyManager | −5.68% | +6.78% | +8.17% |
+| + khởi tạo từ Greedy (GA đề xuất) | **−5.68%** | **−5.76%** | **−9.45%** |
+
+**So với mục 11:**
+1. **10 điểm không đổi** (trùng mọi cột trừ thời gian): ở 10 điểm không tuyến nào cần ghé depot để sạc.
+2. **50 / 100 điểm:** GA đề xuất vẫn rẻ hơn Greedy, mức chênh gần như cũ (−4.66% → −5.76%; −9.68% → −9.45%), độ lệch chuẩn nhỏ hơn. Greedy 100 điểm rẻ hơn một chút (13030.13 → 12967.07) nhờ được ghé depot để sạc, nhưng vẫn còn 1 tuyến thiếu pin.
+3. **500 điểm:** GA vẫn đắt hơn Greedy, nhưng khoảng cách thu hẹp từ +11.13% xuống **+8.33%**, độ lệch chuẩn giảm một nửa (±8024.58 → ±4089.89). Greedy vẫn có **6 / 150 tuyến thiếu pin**: tổng chi phí 95208.86 = 29474.74 (quãng đường) + 1.5 × 39021.51 (năng lượng) + 1201.85 (trễ giờ) + 6000 (phạt pin). Lý do điểm khởi tạo Greedy mất tác dụng giữ nguyên như mục 11.
+4. **2-Opt vẫn làm hỏng pin:** lời giải GA có **0 tuyến cạn pin trước 2-Opt ở cả 3 seed**; sau 2-Opt seed 0 có 2 tuyến cạn pin (pin xuống −44% và −62% của dung lượng), seed 1 và 2 không có.
+5. **Hội tụ:** cost chọn lọc trung bình giảm trong 1/4 số thế hệ cuối: 0% / 0.77% / 1.57% / 0.88% ở 10 / 50 / 100 / 500 điểm; 100 và 500 điểm vẫn chưa hội tụ hẳn.
+6. **Thời gian GA giảm 30–40%** ở 50 / 100 / 500 điểm (19.1 → 13.2 s, 35.4 → 25.2 s, 298.3 → 176.1 s) do `repair_route_with_charging` mới không lọc lại danh sách trạm sạc. Speedup ở mục 10 đo với bản cũ.
+
+**Tái lập** (khoảng 20 phút): cùng 3 lệnh như mục 11.

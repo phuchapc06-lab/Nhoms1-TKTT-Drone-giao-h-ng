@@ -133,11 +133,13 @@ def battery_infeasible_routes(pipeline: UAVRoutingPipeline, solution: List[List[
     """
     Số tuyến thiếu pin theo EnergyManager (đúng phép kiểm tra FitnessCalculator dùng để phạt 1000 / tuyến).
     repair=True: chèn trạm sạc trước khi kiểm tra (cho lời giải chưa qua bước sửa pin của pipeline).
+    Không dùng cờ thứ 3 của repair_route_with_charging: cờ đó còn báo cả tuyến chỉ xuống dưới ngưỡng 15%
+    (pin vẫn dương), khắt khe hơn phép kiểm tra của FitnessCalculator và của cột "sau 2-Opt".
     Validator của TV5 không kiểm tra pin nên phải đếm riêng.
     """
     em, dist, nodes = pipeline.energy_manager, pipeline.dist_matrix, pipeline.nodes
     if repair:
-        return sum(not em.repair_route_with_charging(r, dist, nodes)[2] for r in solution)
+        solution = [em.repair_route_with_charging(r, dist, nodes)[0] for r in solution]
     return sum(not em.calculate_route_energy(r, dist, nodes)[1] for r in solution)
 
 
