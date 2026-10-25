@@ -445,7 +445,13 @@ class BenchmarkEvaluator:
                 first = df.iloc[0]
                 savings_pct = ((first['greedy_energy'] - first['ga_energy']) / first['greedy_energy']) * 100.0 if first['greedy_energy'] > 0 else 0.0
                 f.write(f"- **Mức tiết kiệm năng lượng của GA so với Greedy:** **{savings_pct:.2f}%** (Greedy = **{first['greedy_energy']:.2f} Wh**, GA = **{first['ga_energy']:.2f} Wh**).\n")
-                f.write(f"- **Đánh giá An toàn Pin:** Greedy có **{first['greedy_unsafe_routes']}** tuyến không an toàn, GA có **{first['ga_unsafe_routes']}** tuyến không an toàn; do đó **100% các chuyến bay đều đáp ứng điều kiện pin an toàn** trên dữ liệu thực nghiệm hiện tại.\n")
+                # Đếm trên mọi quy mô (không chỉ dòng đầu); kết luận theo số đếm thực tế
+                unsafe_g, unsafe_ga = int(df["greedy_unsafe_routes"].sum()), int(df["ga_unsafe_routes"].sum())
+                if unsafe_g + unsafe_ga == 0:
+                    verdict = "không chuyến bay nào cạn pin trên các quy mô đã chạy"
+                else:
+                    verdict = "các lời giải có tuyến cạn pin bị validator đánh dấu không hợp lệ"
+                f.write(f"- **Đánh giá An toàn Pin (tổng trên {len(df)} quy mô):** Greedy có **{unsafe_g}** tuyến cạn pin, GA có **{unsafe_ga}** tuyến cạn pin; {verdict}.\n")
                 f.write(f"- **Greedy:** tổng năng lượng = **{first['greedy_energy']:.2f} Wh**, số lần sạc = **{int(first['greedy_charging_events'])}**, tổng thời gian sạc = **{first['greedy_total_charge_time_min']:.2f} phút**.\n")
                 f.write(f"- **GA:** tổng năng lượng = **{first['ga_energy']:.2f} Wh**, số lần sạc = **{int(first['ga_charging_events'])}**, tổng thời gian sạc = **{first['ga_total_charge_time_min']:.2f} phút**.\n")
                 f.write(f"- **Ví dụ chi tiết chặng bay (GA):** {first.get('ga_energy_sample', 'Không có dữ liệu chi tiết')}.\n")

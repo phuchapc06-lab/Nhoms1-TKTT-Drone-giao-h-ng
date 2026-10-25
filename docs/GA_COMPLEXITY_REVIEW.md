@@ -3,6 +3,8 @@
 
 File `docs/COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md` là của TV5. Tài liệu này **chỉ đề xuất**, không sửa file gốc. Mỗi đề xuất có căn cứ: dòng code hoặc số đo tái lập được.
 
+> **Cập nhật 25/10/2026: ĐÃ ÁP DỤNG** vào `COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md` (TV5 cho phép TV1 sửa). Hai điểm đã thay đổi so với nội dung dưới đây: (1) TV3 đã bỏ bước lọc trạm sạc theo $M$ nút (`bb86a29`), nên số hạng $K \cdot M$ không còn, độ phức tạp có EnergyManager gọn thành $O(G \cdot P \cdot (L \cdot C + \log P))$, và bảng mục 3 (đo với EnergyManager cũ) được thay bằng số đo mới; (2) 2-Opt nay chỉ giữ bước đảo không làm tăng chi phí tuyến và validator kiểm tra cạn pin, nên phản ví dụ của Định lý 5 dùng số liệu `GA_TUNING_RESULTS.md` mục 13. Phần dưới giữ nguyên làm lịch sử.
+
 Ký hiệu như file gốc, thêm:
 - $L = N + K - 1$: độ dài chromosome.
 - $\lambda$: hệ số nhân phạt khi chọn lọc (`constraint_penalty_factor`, mặc định 100).
