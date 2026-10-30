@@ -154,6 +154,8 @@ python tests/test_day4_tong_ket.py               # Ngày 4: Kiểm thử tổng 
 
 ## 📂 6. CẤU TRÚC THƯ MỤC DỰ ÁN
 
+Tài liệu tổng hợp về cấu trúc, luồng xử lý và các đầu ra dữ liệu có tại [docs/DU_LIEU_CHUONG_TRINH.md](docs/DU_LIEU_CHUONG_TRINH.md).
+
 ```
 uav-routing-project/
 ├── .github/
@@ -167,6 +169,7 @@ uav-routing-project/
 │   ├── EXPERIMENT_RESULTS.md          # Báo cáo thực nghiệm khoa học đa quy mô
 │   ├── GA_TUNING_RESULTS.md           # Báo cáo tinh chỉnh siêu tham số giải thuật di truyền
 │   ├── Mathematical_Model.md          # Mô hình hóa toán học chính thức của bài toán
+│   ├── DU_LIEU_CHUONG_TRINH.md        # Tổng hợp cấu trúc, luồng xử lý và đầu ra dữ liệu chương trình
 │   ├── NGUYEN_PHUC_HA_CONTRIBUTION.md # Báo cáo chi tiết minh chứng đóng góp cá nhân của Tech Lead
 │   ├── TV1_CONTRIBUTION.md            # Báo cáo đóng góp cá nhân của Thành viên 1
 │   └── TV3_CONTRIBUTION.md            # Báo cáo đóng góp cá nhân của Thành viên 3 (Năng lượng & Pin)
