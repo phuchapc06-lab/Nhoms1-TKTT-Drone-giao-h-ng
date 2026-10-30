@@ -5,6 +5,11 @@ Nhóm thực hiện: Nhóm 1 (Nhóm trưởng: Nguyễn Phúc Hà)
 Mã nguồn: https://github.com/phuchapc06-lab/Nhoms1-TKTT-Drone-giao-h-ng
 ================================================================================
 
+[CẬP NHẬT 31/10/2026] Bản hướng dẫn đầy đủ và mới nhất (14 bộ test, 67 test case,
+mọi lệnh chạy và kết quả chạy gần nhất) ở docs/TONG_HOP_TEST_CASE.md (bản Word:
+docs/TONG_HOP_TEST_CASE.docx). File này giữ lại để tham khảo; mục III bên dưới
+chỉ nêu 3 / 14 bộ test và đường dẫn ở mục I, IV là trên máy của nhóm trưởng.
+
 I. YÊU CẦU MÔI TRƯỜNG & CHUẨN BỊ
 --------------------------------------------------------------------------------
 1. Mở cửa sổ Terminal trong VS Code (chọn Menu Terminal -> New Terminal)

@@ -127,7 +127,7 @@ python src/main.py --evaluate-all
 
 ### 5.3. Chạy kiểm thử tự động toàn diện (14/14 Test Suites - 100% Passed)
 ```bash
-# Lệnh nhanh nhất: Kích hoạt toàn bộ 13 bộ kiểm thử qua CLI chính
+# Lệnh nhanh nhất: Kích hoạt toàn bộ 14 bộ kiểm thử qua CLI chính
 python src/main.py --test
 
 # Hoặc chạy trực tiếp qua Master Test Runner:
@@ -149,6 +149,8 @@ python tests/test_day2_benchmark_speedup.py # Ngày 2: Thực nghiệm Đa quy m
 python tests/test_day3_complexity_correctness.py # Ngày 3: Chứng minh Toán học & Tính đúng đắn
 python tests/test_day4_tong_ket.py               # Ngày 4: Kiểm thử tổng kết & trực quan hóa On-time rate
 ```
+
+Danh sách đầy đủ 67 test case (mục đích, dữ liệu, kết quả mong đợi của từng test), các lệnh chạy và kết quả chạy gần nhất: [`docs/TONG_HOP_TEST_CASE.md`](docs/TONG_HOP_TEST_CASE.md) (bản Word: `docs/TONG_HOP_TEST_CASE.docx`).
 
 ---
 
