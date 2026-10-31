@@ -223,7 +223,7 @@ Là Nhóm trưởng và người phụ trách tích hợp hệ thống, em (Nguy
 | 9 | `src/algorithms/energy_manager.py` | Module quản lý pin, tiêu hao tải trọng và tự động chèn trạm sạc | Hoàn thành |
 | 10 | `src/algorithms/local_search.py` | Module tối ưu cục bộ 2-Opt gỡ giao cắt đường bay đa UAV | Hoàn thành |
 | 11 | `src/algorithms/baseline_greedy.py` | Module thuật toán tham lam Nearest Neighbor định tuyến đối sánh | Hoàn thành |
-| 12 | `tests/run_all_tests.py` | Master Test Runner tự động chạy toàn bộ 13 test suites | Hoàn thành |
+| 12 | `tests/run_all_tests.py` | Master Test Runner tự động chạy toàn bộ 14 test suites | Hoàn thành |
 | 13 | `tests/test_day1_parallel_ontime.py` | Unit Test kiểm thử Song song hóa A* Matrix & Chỉ số Giao đúng giờ Ngày 1 (Thứ 4) | Passed 100% |
 | 14 | `tests/test_day2_benchmark_speedup.py` | Unit Test kiểm thử Đối sánh Đa quy mô & Biểu đồ Speedup Ngày 2 (Thứ 5) | Passed 100% |
 | 15 | `tests/test_day3_complexity_correctness.py` | Unit Test kiểm chứng 5 Định lý Toán học & Tính đúng đắn Ngày 3 (Thứ 6) | Passed 100% |

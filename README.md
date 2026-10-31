@@ -80,16 +80,19 @@ Hệ thống được thiết kế theo mô hình tích hợp toàn trình khép
 
 Số liệu thực nghiệm đo đạc thực tế trên hệ thống (trích xuất tự động từ [`docs/EXPERIMENT_RESULTS.md`](docs/EXPERIMENT_RESULTS.md)):
 
-| Quy mô (N) | Số Drone (K) | Quãng đường Greedy (km) | Quãng đường GA (km) | Tiết kiệm Quãng đường (%) | Tiết kiệm Năng lượng (%) | Tiết kiệm Chi phí (%) | Thời gian Greedy (s) | Thời gian GA (s) |
+| Quy mô ($N$) | Đội bay ($K$) | Quãng đường Greedy (km) | Quãng đường GA (km) | Tiết kiệm Quãng đường (%) | Tiết kiệm Năng lượng (%) | Tỷ lệ Đúng giờ Greedy (%) | Tỷ lệ Đúng giờ GA (%) | Tiết kiệm Chi phí (%) |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **10 điểm** | 3 | 377.25 km | **296.41 km** | **-21.43%** | **-12.21%** | **-17.95%** | 0.0036 s | 0.4589 s |
-| **20 điểm** | 6 | 517.00 km | **448.03 km** | **-13.34%** | **-9.78%** | **-10.90%** | 0.0005 s | 1.0874 s |
-| **30 điểm** | 9 | 695.47 km | **635.83 km** | **-8.58%** | **-7.88%** | **-8.39%** | 0.0015 s | 2.1758 s |
-| **50 điểm** | 14 | 1367.26 km | **1277.71 km** | **-6.55%** | **-4.27%** | **-8.79%** | 0.0070 s | 1.9526 s |
+| **6 điểm** | 3 | 328.09 km | **283.32 km** | **-13.65%** | **-14.42%** | 83.3% | **100.0%** | **-18.66%** |
+| **10 điểm** | 3 | 377.25 km | **289.53 km** | **-23.25%** | **-16.90%** | 80.0% | **100.0%** | **-21.50%** |
+| **20 điểm** | 6 | 518.70 km | **453.61 km** | **-12.55%** | **-8.02%** | 95.0% | **100.0%** | **-10.83%** |
+| **30 điểm** | 9 | 696.97 km | **618.21 km** | **-11.30%** | **-9.73%** | 96.7% | **100.0%** | **-10.81%** |
+| **50 điểm** | 15 | 1469.54 km | **1423.89 km** | **-3.11%** | **-3.28%** | 96.0% | **96.0%** | **-3.84%** |
 
 > **Kết luận khoa học:**
-> - Giải thuật đề xuất ($A^* + GA + \text{2-Opt}$) rút ngắn trung bình **12.47%** quãng đường bay và tiết kiệm **8.53%** năng lượng tiêu thụ so với Greedy Baseline.
+> - Giải thuật đề xuất ($A^* + GA + \text{2-Opt}$) rút ngắn trung bình **12.8%** quãng đường bay, tiết kiệm **10.5%** điện năng tiêu thụ và giảm **13.1%** tổng chi phí so với Greedy Baseline trên các kịch bản thực nghiệm chuẩn.
 > - Cơ chế **Hybrid GA Seeding** đảm bảo lời giải của GA không bao giờ kém hơn Greedy ở bất kỳ quy mô nào.
+> - Tỷ lệ giao hàng đúng giờ đạt **96% - 100%** trên toàn bộ các quy mô nhờ cơ chế phạt vi phạm khung giờ trong hàm thích nghi.
+> - Cơ chế **Energy Manager** đảm bảo 100% các chuyến bay an toàn về pin, tự động ghé trạm sạc hoặc trạm gốc khi pin xuống dưới ngưỡng an toàn 15%.
 > - Thời gian tính toán nằm trong ngưỡng vài giây, hoàn toàn đáp ứng khả năng điều phối thời gian thực trong logistics đô thị.
 
 ---
@@ -167,12 +170,24 @@ uav-routing-project/
 │   ├── raw/                           # Các bộ dữ liệu chuẩn (benchmark_10, 50, 100, 500.json)
 │   └── processed/                     # Dữ liệu xuất thực nghiệm (CSV) và cache khoảng cách (.pkl)
 ├── docs/
-│   ├── figures/                       # Hình ảnh trực quan hóa bản đồ tuyến bay và đồ thị hội tụ
-│   ├── EXPERIMENT_RESULTS.md          # Báo cáo thực nghiệm khoa học đa quy mô
+│   ├── figures/                       # Hình ảnh trực quan hóa bản đồ tuyến bay và đồ thị phân tích
+│   │   ├── comparison_bars.png        # Biểu đồ cột so sánh đa quy mô
+│   │   ├── convergence_ga.png         # Đồ thị đường cong hội tụ GA
+│   │   ├── ga_speedup.png             # Biểu đồ đo tăng tốc GA song song
+│   │   ├── ontime_rate_comparison.png # Biểu đồ đối sánh tỷ lệ giao đúng giờ
+│   │   ├── route_ga.png               # Bản đồ trực quan lộ trình đội bay GA
+│   │   ├── route_greedy.png           # Bản đồ trực quan lộ trình đội bay Greedy
+│   │   ├── scalability_analysis.png   # Đồ thị phân tích khả năng mở rộng
+│   │   └── speedup_analysis.png       # Biểu đồ hệ số tăng tốc song song A*
+│   ├── BAO_CAO_TONG_KET_DE_TAI.md     # Báo cáo tổng kết toàn diện đề tài
+│   ├── COMPLEXITY_AND_CORRECTNESS_ANALYSIS.md # Phân tích độ phức tạp & chứng minh toán học
+│   ├── DU_LIEU_CHUONG_TRINH.md        # Tổng hợp cấu trúc, luồng xử lý và đầu ra dữ liệu
+│   ├── EXPERIMENT_RESULTS.md          # Báo cáo kết quả thử nghiệm đối sánh hiệu năng
+│   ├── GA_COMPLEXITY_REVIEW.md        # Rà soát và phân tích chi tiết độ phức tạp GA
 │   ├── GA_TUNING_RESULTS.md           # Báo cáo tinh chỉnh siêu tham số giải thuật di truyền
 │   ├── Mathematical_Model.md          # Mô hình hóa toán học chính thức của bài toán
-│   ├── DU_LIEU_CHUONG_TRINH.md        # Tổng hợp cấu trúc, luồng xử lý và đầu ra dữ liệu chương trình
 │   ├── NGUYEN_PHUC_HA_CONTRIBUTION.md # Báo cáo chi tiết minh chứng đóng góp cá nhân của Tech Lead
+│   ├── TONG_HOP_TEST_CASE.md          # Tổng hợp 14 bộ test / 67 test case và hướng dẫn chạy (.md & .docx)
 │   ├── TV1_CONTRIBUTION.md            # Báo cáo đóng góp cá nhân của Thành viên 1
 │   └── TV3_CONTRIBUTION.md            # Báo cáo đóng góp cá nhân của Thành viên 3 (Năng lượng & Pin)
 ├── src/
@@ -193,18 +208,22 @@ uav-routing-project/
 │   │   └── ga_tuning.py               # Script quét siêu tham số GA tự động (TV1)
 │   ├── pipeline.py                    # Khung điều phối tích hợp hệ thống toàn trình End-to-End (TV5)
 │   └── main.py                        # Điểm khởi chạy chính của chương trình qua dòng lệnh CLI (TV5)
-├── tests/                             # Hệ thống 10 bộ Unit & Integration Tests (100% Passed)
-│   ├── run_all_tests.py               # Master Test Runner chạy toàn bộ 10 suites
-│   ├── test_distance_matrix.py        # Unit Test TV2
-│   ├── test_ga.py                     # Unit Test TV1
-│   ├── test_energy_manager.py         # Unit Test TV3
-│   ├── test_benchmark_generator.py    # Unit Test TV4
-│   ├── test_member5.py                # Unit Test TV5
-│   ├── test_greedy_baseline.py        # Unit Test TV6
-│   ├── test_day2_pipeline.py          # Integration Test Ngày 2
-│   ├── test_day3_evaluator.py         # Integration Test Ngày 3
-│   ├── test_day4_integration.py       # Integration Test Ngày 4
-│   └── test_day5_integration.py       # Integration Test Ngày 5
+├── tests/                             # Hệ thống 14 bộ Unit & Integration Tests (100% Passed)
+│   ├── run_all_tests.py               # Master Test Runner chạy toàn bộ 14 suites (67 test cases)
+│   ├── test_distance_matrix.py        # TV2: A* Octile & MD5 Cache
+│   ├── test_ga.py                     # TV1: GA Core Engine & Tuning
+│   ├── test_energy_manager.py         # TV3: Energy Manager & Charging
+│   ├── test_benchmark_generator.py    # TV4: Multi-Scale Benchmark Generator
+│   ├── test_member5.py                # TV5: Multi-Objective Fitness & Visualizer
+│   ├── test_greedy_baseline.py        # TV6: Baseline Greedy & 2-Opt Local Search
+│   ├── test_day2_pipeline.py          # Tích hợp: E2E Pipeline & Data Validator
+│   ├── test_day3_evaluator.py         # Tích hợp: Multi-Scale Evaluator
+│   ├── test_day4_integration.py       # Tích hợp: Full System (TV1+TV2+TV3+TV6)
+│   ├── test_day5_integration.py       # Tối ưu: Hybrid GA Seeding & Dynamic Fleet
+│   ├── test_day1_parallel_ontime.py   # TV5: Song song hóa A* Matrix & Tỷ lệ đúng giờ
+│   ├── test_day2_benchmark_speedup.py # TV5: Thực nghiệm Đa quy mô & Biểu đồ Speedup
+│   ├── test_day3_complexity_correctness.py # TV5: Chứng minh Toán học & Tính đúng đắn
+│   └── test_day4_tong_ket.py          # TV5: Kiểm thử tổng kết & trực quan hóa On-time rate
 ├── TIEN_DO.md                         # Bảng theo dõi tiến độ tổng thể của toàn dự án
 ├── requirements.txt                   # Danh mục thư viện Python phụ thuộc
 └── README.md                          # Tài liệu hướng dẫn chính thức của dự án (File này)

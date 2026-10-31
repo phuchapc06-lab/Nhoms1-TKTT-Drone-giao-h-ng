@@ -131,3 +131,10 @@ solution = [
 5. `docs/KE_HOACH_PHAN_CONG_NHOM_6_NGUOI.txt`: Bảng phân công chi tiết công việc cho 6 thành viên.
 6. `docs/Mathematical_Model.md`: Mô hình hóa toán học chính thức (Objective & Constraints).
 7. `docs/figures/`: Thư mục lưu toàn bộ ảnh bản đồ đường bay và biểu đồ nghiên cứu.
+
+### Giai đoạn Hoàn thiện & Nghiệm thu (31/10/2026) - Rà soát toàn diện & Chốt đề tài
+- **Toàn đội dự án & Tech Lead (Nguyễn Phúc Hà):**
+  - Đồng bộ số liệu thực nghiệm đa quy mô chuẩn xác ($N = 6, 10, 20, 30, 50$ điểm) sau khi hoàn thiện cơ chế an toàn pin và kiểm định chi phí 2-Opt.
+  - Tổng hợp tài liệu kiểm thử toàn diện [`docs/TONG_HOP_TEST_CASE.md`](docs/TONG_HOP_TEST_CASE.md) và `docs/TONG_HOP_TEST_CASE.docx` chi tiết hóa toàn bộ 14 bộ kiểm thử và 67 test case.
+  - Hoàn thiện tài liệu cấu trúc dữ liệu [`docs/DU_LIEU_CHUONG_TRINH.md`](docs/DU_LIEU_CHUONG_TRINH.md) và chuẩn hóa [`README.md`](README.md).
+  - Kiểm thử hồi quy toàn diện hệ thống: 14/14 bộ kiểm thử đạt 100% Passed. Mã nguồn và tài liệu đồng bộ hoàn tất.
